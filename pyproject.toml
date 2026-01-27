@@ -25,7 +25,7 @@ keywords = [
     "document-generation"
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
@@ -61,15 +61,15 @@ dev = [
 ]
 docs = [
     "sphinx>=7.0",
-    "sphinx-rtd-theme>=2.0",
+    "furo>=2024.0",
     "myst-parser>=2.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/softwell/genro-office"
+Homepage = "https://github.com/genropy/genro-office"
 Documentation = "https://genro-office.readthedocs.io"
-Repository = "https://github.com/softwell/genro-office"
-Issues = "https://github.com/softwell/genro-office/issues"
+Repository = "https://github.com/genropy/genro-office"
+Issues = "https://github.com/genropy/genro-office/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/genro_office"]
