@@ -15,8 +15,8 @@ from genro_office.builders.word_builder import WordBuilder
 class WordApp:
     """App per generare documenti Word (.docx).
 
-    Esempio:
-        ```python
+    Example::
+
         from genro_office import WordApp
 
         class MyReport(WordApp):
@@ -27,7 +27,6 @@ class WordApp:
 
         report = MyReport()
         report.save("report.docx")
-        ```
     """
 
     def __init__(self) -> None:

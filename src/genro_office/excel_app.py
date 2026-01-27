@@ -15,8 +15,8 @@ from genro_office.builders.excel_builder import ExcelBuilder
 class ExcelApp:
     """App per generare spreadsheet Excel (.xlsx).
 
-    Esempio:
-        ```python
+    Example::
+
         from genro_office import ExcelApp
 
         class MySpreadsheet(ExcelApp):
@@ -29,7 +29,6 @@ class ExcelApp:
 
         spreadsheet = MySpreadsheet()
         spreadsheet.save("dati.xlsx")
-        ```
     """
 
     def __init__(self) -> None:
