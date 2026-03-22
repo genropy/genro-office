@@ -96,7 +96,7 @@ WordApp / ExcelApp (BagAppBase)
     │
     ├── recipe(store)     ← define template with ^pointers
     ├── data              ← bind content, styles, metadata
-    ├── setup()           ← run pipeline: preprocess → bind → compile
+    ├── setup()           ← run pipeline: compile → bind → render
     └── save(filepath)    ← write bytes to file
 ```
 
@@ -160,7 +160,7 @@ The `set_item(path, value, **kwargs)` method creates a node at `path` with `valu
 
 ### Live Update
 
-When data changes after `setup()`, the compiler tries a **live update** on the Document/Workbook object. If the changed attribute supports it (font, color, content, bold, etc.), only that element is updated. Otherwise, the full document is recompiled.
+When data changes after `setup()`, the compiler tries a **live update** on the Document/Workbook object. If the changed attribute supports it (font, color, content, bold, etc.), only that element is updated. Otherwise, the full document is re-rendered.
 
 ## Features
 

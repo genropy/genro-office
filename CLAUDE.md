@@ -22,7 +22,7 @@ WordApp / ExcelApp (BagAppBase)
     ├── compiler_class = WordCompiler / ExcelCompiler (Bag → bytes)
     ├── recipe(store)   ← template with ^pointers
     ├── data            ← content, styles, metadata
-    ├── setup()         ← preprocess → bind → compile
+    ├── setup()         ← compile → bind → render
     └── save(filepath)  ← write bytes
 ```
 
@@ -30,7 +30,7 @@ WordApp / ExcelApp (BagAppBase)
 
 - **WordBuilder / ExcelBuilder**: Define document schema with `@element` decorators. No compile logic.
 - **WordCompiler / ExcelCompiler**: Extend `BagCompilerBase`, produce bytes (docx/xlsx). Maintain live Document/Workbook for incremental updates.
-- **WordApp / ExcelApp**: Extend `BagAppBase`, override `compile()` for bytes output. Provide `render()` and `save()`.
+- **WordApp / ExcelApp**: Extend `BagAppBase`, override `render()` for bytes output. Provide `save()`.
 
 ### Dependencies
 
