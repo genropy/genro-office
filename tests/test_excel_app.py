@@ -73,18 +73,17 @@ class TestExcelApp:
         """Test rendering a simple spreadsheet."""
         app = SimpleExcelDoc()
         app.setup()
-        result = app.render()
+        result = app.output
 
         assert isinstance(result, bytes)
         assert len(result) > 0
-        # XLSX files start with PK (ZIP signature)
         assert result[:2] == b"PK"
 
     def test_render_spreadsheet_with_formula(self):
         """Test rendering a spreadsheet with formula."""
         app = ExcelDocWithFormula()
         app.setup()
-        result = app.render()
+        result = app.output
 
         assert isinstance(result, bytes)
         assert len(result) > 0
@@ -94,7 +93,7 @@ class TestExcelApp:
         """Test rendering a spreadsheet with styling."""
         app = ExcelDocWithStyling()
         app.setup()
-        result = app.render()
+        result = app.output
 
         assert isinstance(result, bytes)
         assert len(result) > 0
@@ -112,7 +111,6 @@ class TestExcelApp:
             assert filepath.exists()
             assert filepath.stat().st_size > 0
 
-            # Verify it's a valid XLSX (ZIP file)
             with open(filepath, "rb") as f:
                 assert f.read(2) == b"PK"
 
@@ -142,6 +140,6 @@ class TestExcelApp:
         app.data["headers.col2"] = "Value"
         app.setup()
 
-        result = app.render()
+        result = app.output
         assert isinstance(result, bytes)
         assert result[:2] == b"PK"

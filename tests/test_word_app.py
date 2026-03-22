@@ -50,18 +50,17 @@ class TestWordApp:
         """Test rendering a simple document."""
         app = SimpleWordDoc()
         app.setup()
-        result = app.render()
+        result = app.output
 
         assert isinstance(result, bytes)
         assert len(result) > 0
-        # DOCX files start with PK (ZIP signature)
         assert result[:2] == b"PK"
 
     def test_render_document_with_table(self):
         """Test rendering a document with a table."""
         app = WordDocWithTable()
         app.setup()
-        result = app.render()
+        result = app.output
 
         assert isinstance(result, bytes)
         assert len(result) > 0
@@ -79,7 +78,6 @@ class TestWordApp:
             assert filepath.exists()
             assert filepath.stat().st_size > 0
 
-            # Verify it's a valid DOCX (ZIP file)
             with open(filepath, "rb") as f:
                 assert f.read(2) == b"PK"
 
@@ -107,6 +105,6 @@ class TestWordApp:
         app.data["doc.body"] = "Bound content paragraph."
         app.setup()
 
-        result = app.render()
+        result = app.output
         assert isinstance(result, bytes)
         assert result[:2] == b"PK"

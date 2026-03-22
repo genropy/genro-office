@@ -12,23 +12,24 @@ Example::
 
     class MyReport(WordApp):
         def recipe(self, store):
-            doc = store.document(title="^doc.title")
-            doc.heading(content="^sections.intro.title", level=1)
-            doc.paragraph(content="^sections.intro.body")
+            doc = store.document(title="^doc?title")
+            doc.heading(content="^doc?heading", level=1)
+            doc.paragraph(content="^doc?body")
 
     report = MyReport()
-    report.data["doc.title"] = "Annual Report"
-    report.data["sections.intro.title"] = "Introduction"
-    report.data["sections.intro.body"] = "Welcome to the report."
+    report.data.set_item("doc", "", title="Report", heading="Intro", body="Hello.")
     report.setup()
     report.save("report.docx")
 """
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from genro_builders import BagAppBase
+
+if TYPE_CHECKING:
+    from genro_bag import Bag
 
 from genro_office.builders.word_builder import WordBuilder
 from genro_office.compilers.word_compiler import WordCompiler
@@ -49,28 +50,16 @@ class WordApp(BagAppBase):
         """Return compiler cast to WordCompiler."""
         return cast("WordCompiler", self._compiler)
 
-    def compile(self) -> bytes:  # type: ignore[override]
-        """Full pipeline: materialize -> bind -> render to bytes.
+    def render(self, compiled_bag: Bag) -> bytes:  # type: ignore[override]
+        """Render a CompiledBag to Word document bytes.
+
+        Args:
+            compiled_bag: The compiled Bag (components expanded, pointers resolved).
 
         Returns:
             Word document as bytes (.docx format).
         """
-        if self._compiler is None:
-            msg = (
-                f"{type(self).__name__} has no compiler. "
-                f"Set compiler_class on the app or builder."
-            )
-            raise RuntimeError(msg)
-
-        compiler = self._word_compiler
-        self._static_bag = compiler.preprocess(self._store)
-        self._binding.bind(self._static_bag, self._data)
-        self._output = compiler.compile_bound(self._static_bag)
-        return self._output
-
-    def render(self) -> bytes:
-        """Render the document to bytes. Alias for compile()."""
-        return self.compile()
+        return self._word_compiler.render(compiled_bag)
 
     def save(self, filepath: str) -> None:
         """Save the document to a file.
@@ -78,14 +67,15 @@ class WordApp(BagAppBase):
         Args:
             filepath: The path to save the document to.
         """
-        content = self.render()
+        if self._output is None:
+            self.compile()
         with open(filepath, "wb") as f:
-            f.write(content)
+            f.write(self._output)  # type: ignore[arg-type]
 
     def _on_node_updated(self, node: Any) -> None:
         """Called when a bound node is updated via data change.
 
-        Tries live update first, falls back to full recompile.
+        Tries live update first, falls back to full re-render.
         """
         if not self._auto_compile:
             return
@@ -95,9 +85,4 @@ class WordApp(BagAppBase):
             self._output = compiler.serialize()
             return
 
-        self._recompile()
-
-    def _recompile(self) -> None:
-        """Re-render the document without re-materializing."""
-        if self._compiler is not None and self._static_bag is not None:
-            self._output = self._word_compiler.compile_bound(self._static_bag)
+        self._rerender()

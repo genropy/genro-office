@@ -41,39 +41,19 @@ class WordCompiler(BagCompilerBase):
         self._live_map: dict[int, Any] = {}
 
     # -------------------------------------------------------------------------
-    # Main compile entry points (override for bytes output)
+    # Rendering (CompiledBag → bytes)
     # -------------------------------------------------------------------------
 
-    def compile(self, bag: Bag | None = None, data: Bag | None = None) -> bytes:  # type: ignore[override]
-        """Compile bag to Word document bytes.
+    def render(self, compiled_bag: Bag) -> bytes:
+        """Render a CompiledBag to Word document bytes.
 
         Args:
-            bag: The Bag to compile. If None, uses builder.bag.
-            data: Optional data Bag for pointer resolution.
+            compiled_bag: The compiled Bag (components expanded, pointers resolved).
 
         Returns:
             Word document as bytes (.docx format).
         """
-        if bag is None:
-            bag = self.builder.bag
-
-        processed_bag = self.preprocess(bag)
-
-        if data is not None:
-            self._resolve_pointers_inline(processed_bag, data)
-
-        return self._render_to_bytes(processed_bag)
-
-    def compile_bound(self, bound_bag: Bag) -> bytes:  # type: ignore[override]
-        """Compile a pre-bound bag (app mode).
-
-        Args:
-            bound_bag: Bag with components expanded and pointers resolved.
-
-        Returns:
-            Word document as bytes.
-        """
-        return self._render_to_bytes(bound_bag)
+        return self._render_to_bytes(compiled_bag)
 
     def serialize(self) -> bytes:
         """Serialize the live Document to bytes without rebuilding."""
