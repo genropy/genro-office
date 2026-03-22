@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "genro-office"
-version = "0.1.0"
+version = "0.2.0"
 description = "Office document generation for Genropy - Word and Excel builders"
 readme = "README.md"
 license = "Apache-2.0"
@@ -38,7 +38,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "genro-bag>=0.1.0",
+    "genro-builders>=0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -92,7 +92,8 @@ mypy_path = "src"
 module = [
     "docx.*",
     "openpyxl.*",
-    "genro_bag",
+    "genro_bag.*",
+    "genro_builders.*",
 ]
 ignore_missing_imports = true
 

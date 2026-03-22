@@ -2,7 +2,11 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""Basic Excel spreadsheet example."""
+"""Basic Excel spreadsheet example.
+
+Demonstrates simple spreadsheet creation with header and data rows.
+Uses ^path?attr for the sheet name.
+"""
 
 from genro_office import ExcelApp
 
@@ -10,17 +14,17 @@ from genro_office import ExcelApp
 class BasicSpreadsheet(ExcelApp):
     """A simple Excel spreadsheet with basic data."""
 
-    def recipe(self, root):
-        wb = root.workbook()
+    def recipe(self, store):
+        wb = store.workbook()
 
-        sheet = wb.sheet(name="Products")
+        sheet = wb.sheet(name="^config?sheet_name")
 
         # Header row
         header = sheet.row()
-        header.cell(content="Product", width=20)
-        header.cell(content="Category", width=15)
-        header.cell(content="Price", width=10)
-        header.cell(content="Stock", width=10)
+        header.cell(content="Product", width=20.0)
+        header.cell(content="Category", width=15.0)
+        header.cell(content="Price", width=10.0)
+        header.cell(content="Stock", width=10.0)
 
         # Data rows
         products = [
@@ -41,5 +45,7 @@ class BasicSpreadsheet(ExcelApp):
 
 if __name__ == "__main__":
     spreadsheet = BasicSpreadsheet()
+    spreadsheet.data.set_item("config", "", sheet_name="Products")
+    spreadsheet.setup()
     spreadsheet.save("output.xlsx")
     print("Created: output.xlsx")

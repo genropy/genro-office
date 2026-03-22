@@ -1,64 +1,76 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""WordApp - App per generare documenti Word (.docx)."""
+"""WordApp - Reactive app for Word documents (.docx).
+
+Uses BagAppBase pipeline with ^pointer data binding.
+The recipe defines the document template, data provides content.
+
+Example::
+
+    from genro_office import WordApp
+
+    class MyReport(WordApp):
+        def recipe(self, store):
+            doc = store.document(title="^doc.title")
+            doc.heading(content="^sections.intro.title", level=1)
+            doc.paragraph(content="^sections.intro.body")
+
+    report = MyReport()
+    report.data["doc.title"] = "Annual Report"
+    report.data["sections.intro.title"] = "Introduction"
+    report.data["sections.intro.body"] = "Welcome to the report."
+    report.setup()
+    report.save("report.docx")
+"""
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
-from genro_bag import Bag
+from genro_builders import BagAppBase
 
 from genro_office.builders.word_builder import WordBuilder
+from genro_office.compilers.word_compiler import WordCompiler
 
 
-class WordApp:
-    """App per generare documenti Word (.docx).
+class WordApp(BagAppBase):
+    """Reactive app for Word document generation.
 
-    Example::
-
-        from genro_office import WordApp
-
-        class MyReport(WordApp):
-            def recipe(self, root):
-                doc = root.document(title="Report")
-                doc.heading(content="Introduzione", level=1)
-                doc.paragraph(content="Testo del paragrafo...")
-
-        report = MyReport()
-        report.save("report.docx")
+    Extends BagAppBase with bytes output and live update support.
     """
 
-    def __init__(self) -> None:
-        self._page = Bag(builder=WordBuilder)
-        self._data = Bag()
-        self.recipe(self._page)
+    builder_class = WordBuilder
+    compiler_class = WordCompiler
+    _output: bytes | None = None  # type: ignore[assignment]
 
     @property
-    def page(self) -> Bag:
-        """The page Bag (document structure)."""
-        return self._page
+    def _word_compiler(self) -> WordCompiler:
+        """Return compiler cast to WordCompiler."""
+        return cast("WordCompiler", self._compiler)
 
-    @property
-    def data(self) -> Bag:
-        """The data Bag (for data binding)."""
-        return self._data
-
-    def recipe(self, root: Bag) -> None:
-        """Override this method to build your document.
-
-        Args:
-            root: The root Bag to add elements to.
-        """
-
-    def render(self) -> bytes:
-        """Render the document to bytes.
+    def compile(self) -> bytes:  # type: ignore[override]
+        """Full pipeline: materialize -> bind -> render to bytes.
 
         Returns:
-            The Word document as bytes (.docx format).
+            Word document as bytes (.docx format).
         """
-        builder = cast("WordBuilder", self._page.builder)
-        return builder.compile(self._page)
+        if self._compiler is None:
+            msg = (
+                f"{type(self).__name__} has no compiler. "
+                f"Set compiler_class on the app or builder."
+            )
+            raise RuntimeError(msg)
+
+        compiler = self._word_compiler
+        self._static_bag = compiler.preprocess(self._store)
+        self._binding.bind(self._static_bag, self._data)
+        self._output = compiler.compile_bound(self._static_bag)
+        return self._output
+
+    def render(self) -> bytes:
+        """Render the document to bytes. Alias for compile()."""
+        return self.compile()
 
     def save(self, filepath: str) -> None:
         """Save the document to a file.
@@ -69,3 +81,23 @@ class WordApp:
         content = self.render()
         with open(filepath, "wb") as f:
             f.write(content)
+
+    def _on_node_updated(self, node: Any) -> None:
+        """Called when a bound node is updated via data change.
+
+        Tries live update first, falls back to full recompile.
+        """
+        if not self._auto_compile:
+            return
+
+        compiler = self._word_compiler
+        if compiler.update_node(node):
+            self._output = compiler.serialize()
+            return
+
+        self._recompile()
+
+    def _recompile(self) -> None:
+        """Re-render the document without re-materializing."""
+        if self._compiler is not None and self._static_bag is not None:
+            self._output = self._word_compiler.compile_bound(self._static_bag)

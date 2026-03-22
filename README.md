@@ -1,6 +1,10 @@
 # genro-office
 
-Office document generation for Genropy - Word and Excel builders using the App pattern.
+Reactive office document generation for Genropy — Word and Excel with template-based data binding.
+
+## Overview
+
+genro-office uses the **genro-builders** architecture: the `recipe()` defines a **document template** with `^pointer` placeholders, and the `data` Bag provides the actual content. Change the data → the document updates.
 
 ## Installation
 
@@ -26,30 +30,29 @@ from genro_office import WordApp
 
 
 class MyReport(WordApp):
-    def recipe(self, root):
-        doc = root.document(title="Quarterly Report")
+    def recipe(self, store):
+        doc = store.document(title="^doc?title")
+        doc.heading(content="^doc?section", level=1)
+        doc.paragraph(content="^doc?body", bold=True, color="008000")
 
-        doc.heading(content="Introduction", level=1)
-        doc.paragraph(content="This is the quarterly report for Q4 2024.")
-
-        doc.heading(content="Summary", level=2)
-        doc.paragraph(
-            content="Revenue increased by 15%.",
-            bold=True,
-            color="008000",
-        )
-
-        # Table
         table = doc.table(style="Table Grid")
         header = table.row()
         header.cell(content="Product", bold=True)
         header.cell(content="Sales", bold=True)
 
-        table.row().cell(content="Widget A").cell(content="$10,000")
-        table.row().cell(content="Widget B").cell(content="$15,000")
+        row = table.row()
+        row.cell(content="Widget A")
+        row.cell(content="$10,000")
 
 
 report = MyReport()
+report.data.set_item(
+    "doc", "",
+    title="Quarterly Report",
+    section="Introduction",
+    body="Revenue increased by 15%.",
+)
+report.setup()
 report.save("report.docx")
 ```
 
@@ -60,22 +63,18 @@ from genro_office import ExcelApp
 
 
 class SalesReport(ExcelApp):
-    def recipe(self, root):
-        wb = root.workbook()
+    def recipe(self, store):
+        wb = store.workbook()
+        sheet = wb.sheet(name="^config?sheet_name", freeze_panes="A2")
 
-        sheet = wb.sheet(name="Sales", freeze_panes="A2")
+        header = sheet.row(height=20.0)
+        header.cell(content="Product", bold=True, bg_color="4472C4", width=20.0)
+        header.cell(content="Q1", bold=True, bg_color="4472C4", width=12.0)
+        header.cell(content="Q2", bold=True, bg_color="4472C4", width=12.0)
 
-        # Header
-        header = sheet.row(height=20)
-        header.cell(content="Product", bold=True, bg_color="4472C4", width=20)
-        header.cell(content="Q1", bold=True, bg_color="4472C4", width=12)
-        header.cell(content="Q2", bold=True, bg_color="4472C4", width=12)
-
-        # Data
         sheet.row().cell(content="Widget A").cell(content=1000).cell(content=1200)
         sheet.row().cell(content="Widget B").cell(content=800).cell(content=950)
 
-        # Total with formula
         total = sheet.row()
         total.cell(content="Total", bold=True)
         total.cell(formula="=SUM(B2:B3)", bold=True)
@@ -83,8 +82,85 @@ class SalesReport(ExcelApp):
 
 
 report = SalesReport()
+report.data.set_item("config", "", sheet_name="Sales")
+report.setup()
 report.save("sales.xlsx")
 ```
+
+## Architecture
+
+genro-office extends [genro-builders](https://github.com/genropy/genro-builders) `BagAppBase`:
+
+```text
+WordApp / ExcelApp (BagAppBase)
+    │
+    ├── recipe(store)     ← define template with ^pointers
+    ├── data              ← bind content, styles, metadata
+    ├── setup()           ← run pipeline: preprocess → bind → compile
+    └── save(filepath)    ← write bytes to file
+```
+
+### Components
+
+| Component                        | Role                                             |
+| -------------------------------- | ------------------------------------------------ |
+| **WordBuilder / ExcelBuilder**   | Define document schema (`@element` declarations) |
+| **WordCompiler / ExcelCompiler** | Transform Bag → bytes (docx/xlsx)                |
+| **WordApp / ExcelApp**           | User-facing app, extends `BagAppBase`            |
+
+### Data Binding with `^pointer`
+
+Two pointer forms are supported:
+
+| Syntax       | Reads                                  | Example            |
+| ------------ | -------------------------------------- | ------------------ |
+| `^path`      | Value of the node at `path`            | `^invoice.title`   |
+| `^path?attr` | Attribute `attr` of the node at `path` | `^sender?company`  |
+
+#### Using `^path` (node values)
+
+Each data key is a separate node:
+
+```python
+app.data["invoice.title"] = "Invoice #2024-001"
+app.data["invoice.body"] = "Thank you for your business."
+```
+
+#### Using `^path?attr` with `set_item` (node attributes)
+
+Group related data as attributes of a single node:
+
+```python
+class Invoice(WordApp):
+    def recipe(self, store):
+        doc = store.document()
+        doc.heading(
+            content="^invoice?title",
+            font_name="^styles?heading_font",
+            color="^styles?heading_color",
+        )
+        doc.paragraph(content="^invoice?body")
+
+app = Invoice()
+app.data.set_item(
+    "invoice", "",
+    title="Invoice #2024-001",
+    body="Thank you for your business.",
+)
+app.data.set_item(
+    "styles", "",
+    heading_font="Arial",
+    heading_color="1F4E79",
+)
+app.setup()
+app.save("invoice.docx")
+```
+
+The `set_item(path, value, **kwargs)` method creates a node at `path` with `value` and keyword arguments as attributes. The `^path?attr` syntax reads the attribute from that node.
+
+### Live Update
+
+When data changes after `setup()`, the compiler tries a **live update** on the Document/Workbook object. If the changed attribute supports it (font, color, content, bold, etc.), only that element is updated. Otherwise, the full document is recompiled.
 
 ## Features
 
@@ -99,6 +175,7 @@ report.save("sales.xlsx")
 - **Images**: with width/height control
 - **Headers and footers**
 - **Page breaks**
+- **`^pointer` data binding** on all attributes
 
 ### ExcelApp / ExcelBuilder
 
@@ -110,32 +187,7 @@ report.save("sales.xlsx")
 - **Autofilter**
 - **Charts**: bar, line, pie
 - **Formulas**: including cross-sheet references
-
-## Examples
-
-See the `examples/` directory for complete examples:
-
-```text
-examples/
-├── excel/
-│   ├── advanced/   # All features: charts, merge, freeze panes
-│   ├── basic/      # Simple data entry
-│   ├── formulas/   # Excel formulas
-│   └── styled/     # Formatting
-└── word/
-    ├── advanced/   # All features
-    ├── basic/      # Headings, paragraphs, tables
-    ├── letter/     # Business letter
-    └── report/     # Quarterly report
-```
-
-Run any example:
-
-```bash
-cd examples/word/basic
-python main.py
-# Creates output.docx
-```
+- **`^pointer` data binding** on all attributes
 
 ## API Reference
 
@@ -143,9 +195,9 @@ python main.py
 
 ```python
 class MyDocument(WordApp):
-    def recipe(self, root):
-        doc = root.document(
-            title="Document Title",
+    def recipe(self, store):
+        doc = store.document(
+            title="^doc?title",
             orientation="portrait",  # or "landscape"
             margin_top=2.5,          # cm
             margin_bottom=2.5,
@@ -154,20 +206,20 @@ class MyDocument(WordApp):
         )
 
         # Headings
-        doc.heading(content="Title", level=1, bold=True, color="FF0000")
+        doc.heading(content="^doc?heading", level=1, bold=True, color="FF0000")
 
         # Paragraphs
         doc.paragraph(
-            content="Text",
+            content="^content?body",
             bold=False,
             italic=False,
             underline=False,
             font_size=12,
-            font_name="Arial",
+            font_name="^styles?body_font",
             color="000000",
-            align="left",  # left, center, right, justify
-            space_before=12,  # points
-            space_after=12,
+            align="left",        # left, center, right, justify
+            space_before=12.0,   # points
+            space_after=12.0,
             line_spacing=1.5,
         )
 
@@ -191,70 +243,113 @@ class MyDocument(WordApp):
             bg_color="4472C4",
             align="center",
             valign="center",  # top, center, bottom
-            width=5,  # cm
+            width=5.0,        # cm
         )
 
         # Header/Footer
         header = doc.header()
-        header.paragraph(content="Header text", align="right")
+        header.paragraph(content="^doc?header", align="right")
 
         footer = doc.footer()
-        footer.paragraph(content="Page 1", align="center")
+        footer.paragraph(content="^doc?footer", align="center")
 
         # Images
-        doc.image(path="logo.png", width=2, height=1, align="center")
+        doc.image(path="logo.png", width=2.0, height=1.0, align="center")
 
         # Page break
         doc.pagebreak()
+
+# Usage
+app = MyDocument()
+app.data.set_item(
+    "doc", "",
+    title="My Document",
+    heading="Chapter 1",
+    header="Confidential",
+    footer="Page 1",
+)
+app.data.set_item("content", "", body="Hello World")
+app.data.set_item("styles", "", body_font="Georgia")
+app.setup()
+app.save("output.docx")
 ```
 
 ### ExcelApp
 
 ```python
 class MySpreadsheet(ExcelApp):
-    def recipe(self, root):
-        wb = root.workbook()
+    def recipe(self, store):
+        wb = store.workbook()
 
         sheet = wb.sheet(
-            name="Data",
-            freeze_panes="A2",      # Freeze at cell
-            autofilter="A1:D10",    # Filterable range
+            name="^config?sheet_name",
+            freeze_panes="A2",
+            autofilter="A1:D10",
         )
 
-        # Rows
-        row = sheet.row(height=25, hidden=False)
+        row = sheet.row(height=25.0, hidden=False)
 
-        # Cells
         row.cell(
-            content="Value",
-            formula="=SUM(A1:A10)",  # Formula takes precedence
-            width=15,                # Column width
+            content="^data?value",
+            formula="=SUM(A1:A10)",  # formula takes precedence
+            width=15.0,
             bold=True,
             italic=False,
             font_size=12,
             font_color="FF0000",
             bg_color="FFFF00",
-            align="center",          # left, center, right
-            valign="center",         # top, center, bottom
+            align="center",
+            valign="center",
             wrap_text=True,
-            border="thin",           # thin, medium, thick, double
+            border="thin",
             border_color="000000",
             number_format="#,##0.00",
         )
 
-        # Merged cells
         sheet.merge(range="A1:D1")
 
-        # Charts
         sheet.chart(
-            type="bar",              # bar, line, pie
-            title="Sales Chart",
+            type="bar",
+            title="^config?chart_title",
             data_range="B2:B10",
             categories_range="A2:A10",
             position="E2",
-            width=15,                # cm
-            height=10,
+            width=15.0,
+            height=10.0,
         )
+
+# Usage
+app = MySpreadsheet()
+app.data.set_item("config", "", sheet_name="Data", chart_title="Sales Chart")
+app.data.set_item("data", "", value=42)
+app.setup()
+app.save("output.xlsx")
+```
+
+## Examples
+
+See the `examples/` directory for complete examples:
+
+```text
+examples/
+├── excel/
+│   ├── advanced/   # All features: charts, merge, freeze panes, ^pointer
+│   ├── basic/      # Simple data entry with ^pointer
+│   ├── formulas/   # Excel formulas
+│   └── styled/     # Formatting with ^pointer
+└── word/
+    ├── advanced/   # All features with ^pointer styles
+    ├── basic/      # Headings, paragraphs, tables with ^pointer
+    ├── letter/     # Business letter template with ^pointer
+    └── report/     # Quarterly report template with ^pointer
+```
+
+Run any example:
+
+```bash
+cd examples/word/basic
+python main.py
+# Creates output.docx
 ```
 
 ## Development Status

@@ -4,13 +4,14 @@
 
 """Advanced Word document example.
 
-Demonstrates all advanced features:
+Demonstrates all advanced features with ^path?attr data binding:
 - Document settings (orientation, margins)
 - Text formatting (bold, italic, underline, colors, fonts)
 - Inline runs with mixed formatting
 - Bulleted and numbered lists
 - Formatted tables with colors and alignment
 - Headers and footers
+- Style parameters via data binding (^styles?attr)
 """
 
 from genro_office import WordApp
@@ -19,9 +20,9 @@ from genro_office import WordApp
 class AdvancedDocument(WordApp):
     """An advanced Word document with all features."""
 
-    def recipe(self, root):
-        doc = root.document(
-            title="Advanced Document Features",
+    def recipe(self, store):
+        doc = store.document(
+            title="^doc?title",
             orientation="portrait",
             margin_top=2.5,
             margin_bottom=2.5,
@@ -32,10 +33,10 @@ class AdvancedDocument(WordApp):
         # Header
         header = doc.header()
         header.paragraph(
-            content="Company Confidential",
+            content="^doc?header_text",
             italic=True,
             align="right",
-            color="808080",
+            color="^styles?muted_color",
         )
 
         # Section 1: Text Formatting
@@ -50,31 +51,28 @@ class AdvancedDocument(WordApp):
         # Footer
         footer = doc.footer()
         footer.paragraph(
-            content="Page 1 of 1",
+            content="^doc?footer_text",
             align="center",
             font_size=10,
-            color="808080",
+            color="^styles?muted_color",
         )
 
     def _create_formatting_section(self, doc):
         """Create section demonstrating text formatting."""
         doc.heading(content="1. Text Formatting", level=1)
 
-        # Basic formatting
         doc.paragraph(content="This is bold text.", bold=True)
         doc.paragraph(content="This is italic text.", italic=True)
         doc.paragraph(content="This is underlined text.", underline=True)
 
-        # Combined formatting
         doc.paragraph(
             content="This has multiple styles applied.",
             bold=True,
             italic=True,
             font_size=14,
-            color="0000FF",
+            color="^styles?accent_color",
         )
 
-        # Alignment examples
         doc.heading(content="1.1 Alignment", level=2)
         doc.paragraph(content="Left aligned paragraph.", align="left")
         doc.paragraph(content="Center aligned paragraph.", align="center")
@@ -85,7 +83,6 @@ class AdvancedDocument(WordApp):
             align="justify",
         )
 
-        # Inline runs with mixed formatting
         doc.heading(content="1.2 Mixed Inline Formatting", level=2)
         para = doc.paragraph(content="This paragraph has ")
         para.run(content="bold", bold=True)
@@ -97,15 +94,14 @@ class AdvancedDocument(WordApp):
         para.run(content="highlighted", highlight="yellow")
         para.run(content=" text inline.")
 
-        # Spacing
         doc.heading(content="1.3 Paragraph Spacing", level=2)
         doc.paragraph(
             content="This paragraph has extra space before it.",
-            space_before=24,
+            space_before=24.0,
         )
         doc.paragraph(
             content="This paragraph has extra space after it.",
-            space_after=24,
+            space_after=24.0,
         )
         doc.paragraph(
             content="This paragraph has 1.5 line spacing for better readability "
@@ -117,14 +113,12 @@ class AdvancedDocument(WordApp):
         """Create section demonstrating lists."""
         doc.heading(content="2. Lists", level=1)
 
-        # Bullet list
         doc.heading(content="2.1 Bullet List", level=2)
         bullet_list = doc.itemlist(type="bullet")
         bullet_list.item(content="First bullet point")
         bullet_list.item(content="Second bullet point")
         bullet_list.item(content="Third bullet point with more text")
 
-        # Numbered list
         doc.heading(content="2.2 Numbered List", level=2)
         num_list = doc.itemlist(type="number")
         num_list.item(content="First step")
@@ -136,14 +130,19 @@ class AdvancedDocument(WordApp):
         """Create section demonstrating tables."""
         doc.heading(content="3. Tables", level=1)
 
-        # Simple table
         doc.heading(content="3.1 Simple Table", level=2)
         table1 = doc.table(style="Table Grid")
 
         header_row = table1.row()
-        header_row.cell(content="Product", bold=True, bg_color="4472C4", align="center")
-        header_row.cell(content="Price", bold=True, bg_color="4472C4", align="center")
-        header_row.cell(content="Quantity", bold=True, bg_color="4472C4", align="center")
+        header_row.cell(
+            content="Product", bold=True, bg_color="4472C4", align="center",
+        )
+        header_row.cell(
+            content="Price", bold=True, bg_color="4472C4", align="center",
+        )
+        header_row.cell(
+            content="Quantity", bold=True, bg_color="4472C4", align="center",
+        )
 
         data = [
             ("Widget A", "$10.00", "100"),
@@ -157,43 +156,27 @@ class AdvancedDocument(WordApp):
             row.cell(content=price, align="right")
             row.cell(content=qty, align="center")
 
-        # Formatted table with alignment
         doc.heading(content="3.2 Formatted Table", level=2)
         table2 = doc.table(style="Table Grid", align="center")
 
-        # Header
         h_row = table2.row()
         h_row.cell(
-            content="Category",
-            bold=True,
-            bg_color="1F4E79",
-            align="center",
-            valign="center",
-            width=5,
+            content="Category", bold=True, bg_color="1F4E79",
+            align="center", valign="center", width=5.0,
         )
         h_row.cell(
-            content="Q1",
-            bold=True,
-            bg_color="1F4E79",
-            align="center",
-            width=3,
+            content="Q1", bold=True, bg_color="1F4E79",
+            align="center", width=3.0,
         )
         h_row.cell(
-            content="Q2",
-            bold=True,
-            bg_color="1F4E79",
-            align="center",
-            width=3,
+            content="Q2", bold=True, bg_color="1F4E79",
+            align="center", width=3.0,
         )
         h_row.cell(
-            content="Total",
-            bold=True,
-            bg_color="1F4E79",
-            align="center",
-            width=3,
+            content="Total", bold=True, bg_color="1F4E79",
+            align="center", width=3.0,
         )
 
-        # Data rows
         categories = [
             ("Revenue", "$50,000", "$55,000", "$105,000"),
             ("Expenses", "$35,000", "$38,000", "$73,000"),
@@ -211,5 +194,20 @@ class AdvancedDocument(WordApp):
 
 if __name__ == "__main__":
     document = AdvancedDocument()
+
+    document.data.set_item(
+        "doc", "",
+        title="Advanced Document Features",
+        header_text="Company Confidential",
+        footer_text="Page 1 of 1",
+    )
+
+    document.data.set_item(
+        "styles", "",
+        muted_color="808080",
+        accent_color="0000FF",
+    )
+
+    document.setup()
     document.save("output.docx")
     print("Created: output.docx")

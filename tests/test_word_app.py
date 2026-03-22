@@ -14,8 +14,8 @@ from genro_office import WordApp
 class SimpleWordDoc(WordApp):
     """Simple Word document for testing."""
 
-    def recipe(self, root):
-        doc = root.document(title="Test Document")
+    def recipe(self, store):
+        doc = store.document(title="Test Document")
         doc.heading(content="Chapter 1", level=1)
         doc.paragraph(content="This is a test paragraph.")
 
@@ -23,8 +23,8 @@ class SimpleWordDoc(WordApp):
 class WordDocWithTable(WordApp):
     """Word document with table for testing."""
 
-    def recipe(self, root):
-        doc = root.document(title="Table Test")
+    def recipe(self, store):
+        doc = store.document(title="Table Test")
         doc.paragraph(content="Here is a table:")
 
         table = doc.table()
@@ -43,12 +43,13 @@ class TestWordApp:
     def test_create_empty_app(self):
         """Test creating an empty WordApp."""
         app = WordApp()
-        assert app.page is not None
+        assert app.store is not None
         assert app.data is not None
 
     def test_render_simple_document(self):
         """Test rendering a simple document."""
         app = SimpleWordDoc()
+        app.setup()
         result = app.render()
 
         assert isinstance(result, bytes)
@@ -59,6 +60,7 @@ class TestWordApp:
     def test_render_document_with_table(self):
         """Test rendering a document with a table."""
         app = WordDocWithTable()
+        app.setup()
         result = app.render()
 
         assert isinstance(result, bytes)
@@ -68,6 +70,7 @@ class TestWordApp:
     def test_save_document(self):
         """Test saving a document to file."""
         app = SimpleWordDoc()
+        app.setup()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "test.docx"
@@ -80,12 +83,30 @@ class TestWordApp:
             with open(filepath, "rb") as f:
                 assert f.read(2) == b"PK"
 
-    def test_page_property(self):
-        """Test page property returns the Bag."""
+    def test_store_property(self):
+        """Test store property returns the BuilderBag."""
         app = SimpleWordDoc()
-        assert app.page is app._page
+        assert app.store is app._store
 
     def test_data_property(self):
         """Test data property returns the data Bag."""
         app = SimpleWordDoc()
         assert app.data is app._data
+
+    def test_data_binding(self):
+        """Test ^pointer data binding in recipe."""
+
+        class BoundDoc(WordApp):
+            def recipe(self, store):
+                doc = store.document()
+                doc.heading(content="^doc.title", level=1)
+                doc.paragraph(content="^doc.body")
+
+        app = BoundDoc()
+        app.data["doc.title"] = "Bound Title"
+        app.data["doc.body"] = "Bound content paragraph."
+        app.setup()
+
+        result = app.render()
+        assert isinstance(result, bytes)
+        assert result[:2] == b"PK"

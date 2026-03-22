@@ -2,7 +2,11 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""Basic Word document example."""
+"""Basic Word document example.
+
+Demonstrates simple document creation with headings, paragraphs, and a table.
+Uses both ^path (value) and ^path?attr (attribute) data binding.
+"""
 
 from genro_office import WordApp
 
@@ -10,18 +14,18 @@ from genro_office import WordApp
 class BasicDocument(WordApp):
     """A simple Word document with headings, paragraphs, and a table."""
 
-    def recipe(self, root):
-        doc = root.document(title="My First Document")
+    def recipe(self, store):
+        doc = store.document(title="^doc?title")
 
-        doc.heading(content="Introduction", level=1)
-        doc.paragraph(content="This is a simple Word document created with genro-office.")
-        doc.paragraph(content="It demonstrates the basic features of the WordBuilder.")
+        doc.heading(content="^doc?section_intro", level=1)
+        doc.paragraph(content="^content?intro")
+        doc.paragraph(content="^content?features_intro")
 
-        doc.heading(content="Features", level=2)
+        doc.heading(content="^doc?section_features", level=2)
         doc.paragraph(content="You can create headings at different levels.")
         doc.paragraph(content="You can add paragraphs with text content.")
 
-        doc.heading(content="Sample Table", level=2)
+        doc.heading(content="^doc?section_table", level=2)
 
         table = doc.table()
         row1 = table.row()
@@ -39,5 +43,21 @@ class BasicDocument(WordApp):
 
 if __name__ == "__main__":
     document = BasicDocument()
+
+    document.data.set_item(
+        "doc", "",
+        title="My First Document",
+        section_intro="Introduction",
+        section_features="Features",
+        section_table="Sample Table",
+    )
+
+    document.data.set_item(
+        "content", "",
+        intro="This is a simple Word document created with genro-office.",
+        features_intro="It demonstrates the basic features of the WordBuilder.",
+    )
+
+    document.setup()
     document.save("output.docx")
     print("Created: output.docx")

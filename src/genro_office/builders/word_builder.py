@@ -1,29 +1,24 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""WordBuilder - Builder per documenti Word (.docx)."""
+"""WordBuilder - Builder for Word documents (.docx).
+
+Defines the schema elements for Word document generation.
+Compilation is handled by WordCompiler.
+"""
 
 from __future__ import annotations
 
-from io import BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from genro_bag import Bag
-from genro_bag.builder import BagBuilderBase, element
+from genro_builders import BagBuilderBase
+from genro_builders.builder import element
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from genro_bag.bagnode import BagNode
+    from genro_bag import Bag
 
 try:
-    from docx import Document
-    from docx.enum.section import WD_ORIENT
-    from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
-    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-    from docx.shared import Cm, Inches, Pt, RGBColor
+    from docx import Document as _Document  # noqa: F401
 
     DOCX_AVAILABLE = True
 except ImportError:
@@ -31,7 +26,9 @@ except ImportError:
 
 
 class WordBuilder(BagBuilderBase):
-    """Builder per documenti Word (.docx) usando python-docx."""
+    """Builder for Word documents (.docx) using python-docx."""
+
+    compiler_class: type | None = None
 
     def __init__(self, bag: Bag) -> None:
         if not DOCX_AVAILABLE:
@@ -47,7 +44,6 @@ class WordBuilder(BagBuilderBase):
     def document(
         self,
         title: str = "",
-        # Page setup
         orientation: str | None = None,
         margin_top: float | None = None,
         margin_bottom: float | None = None,
@@ -71,7 +67,6 @@ class WordBuilder(BagBuilderBase):
         self,
         content: str = "",
         level: int = 1,
-        # Formatting
         bold: bool | None = None,
         italic: bool | None = None,
         color: str | None = None,
@@ -92,16 +87,13 @@ class WordBuilder(BagBuilderBase):
         self,
         content: str = "",
         style: str | None = None,
-        # Formatting
         bold: bool = False,
         italic: bool = False,
         underline: bool = False,
         font_size: int | None = None,
         font_name: str | None = None,
         color: str | None = None,
-        # Alignment
         align: str | None = None,
-        # Spacing
         space_before: float | None = None,
         space_after: float | None = None,
         line_spacing: float | None = None,
@@ -249,399 +241,3 @@ class WordBuilder(BagBuilderBase):
     def footer(self) -> None:
         """Document footer element."""
         ...
-
-    # -------------------------------------------------------------------------
-    # Compile: Bag → bytes (docx)
-    # -------------------------------------------------------------------------
-
-    def compile(self, bag: Bag) -> bytes:
-        """Compile Bag to Word document bytes."""
-        doc = Document()
-
-        for node in bag:
-            self._compile_node(node, doc)
-
-        buffer = BytesIO()
-        doc.save(buffer)
-        return buffer.getvalue()
-
-    def _compile_node(self, node: BagNode, doc: Any) -> None:
-        """Compile a single node."""
-        tag = node.tag or ""
-
-        compile_method = getattr(self, f"_compile_{tag}", None)
-        if compile_method:
-            compile_method(node, doc)
-
-    def _compile_document(self, node: BagNode, doc: Any) -> None:
-        """Compile document node."""
-        # Page setup
-        section = doc.sections[0]
-
-        orientation = node.attr.get("orientation")
-        if orientation == "landscape":
-            section.orientation = WD_ORIENT.LANDSCAPE
-            # Swap width and height for landscape
-            new_width = section.page_height
-            new_height = section.page_width
-            section.page_width = new_width
-            section.page_height = new_height
-
-        margin_top = node.attr.get("margin_top")
-        if margin_top is not None:
-            section.top_margin = Cm(margin_top)
-
-        margin_bottom = node.attr.get("margin_bottom")
-        if margin_bottom is not None:
-            section.bottom_margin = Cm(margin_bottom)
-
-        margin_left = node.attr.get("margin_left")
-        if margin_left is not None:
-            section.left_margin = Cm(margin_left)
-
-        margin_right = node.attr.get("margin_right")
-        if margin_right is not None:
-            section.right_margin = Cm(margin_right)
-
-        # Title
-        title = node.attr.get("title", "")
-        if title:
-            doc.add_heading(title, level=0)
-
-        # Children
-        if isinstance(node.value, Bag):
-            for child in node.value:
-                self._compile_node(child, doc)
-
-    def _compile_heading(self, node: BagNode, doc: Any) -> None:
-        """Compile heading node."""
-        content = node.attr.get("content", "")
-        level = node.attr.get("level", 1)
-
-        heading = doc.add_heading(content, level=level)
-
-        # Apply formatting to the heading run
-        if heading.runs:
-            run = heading.runs[0]
-            self._apply_run_formatting(node, run)
-
-        # Process child runs
-        if isinstance(node.value, Bag):
-            for child in node.value:
-                if child.tag == "run":
-                    self._compile_run_to_paragraph(child, heading)
-
-    def _compile_paragraph(self, node: BagNode, doc: Any) -> None:
-        """Compile paragraph node."""
-        content = node.attr.get("content", "")
-        style = node.attr.get("style")
-        para = doc.add_paragraph(style=style) if style else doc.add_paragraph()
-
-        # Add content with formatting
-        if content:
-            run = para.add_run(content)
-            self._apply_run_formatting(node, run)
-
-        # Alignment
-        align = node.attr.get("align")
-        if align:
-            para.alignment = self._get_alignment(align)
-
-        # Spacing
-        space_before = node.attr.get("space_before")
-        if space_before is not None:
-            para.paragraph_format.space_before = Pt(space_before)
-
-        space_after = node.attr.get("space_after")
-        if space_after is not None:
-            para.paragraph_format.space_after = Pt(space_after)
-
-        line_spacing = node.attr.get("line_spacing")
-        if line_spacing is not None:
-            para.paragraph_format.line_spacing = line_spacing
-
-        # Process child runs
-        if isinstance(node.value, Bag):
-            for child in node.value:
-                if child.tag == "run":
-                    self._compile_run_to_paragraph(child, para)
-
-    def _compile_run_to_paragraph(self, node: BagNode, para: Any) -> None:
-        """Compile run node and add to paragraph."""
-        content = node.attr.get("content", "")
-        run = para.add_run(content)
-        self._apply_run_formatting(node, run)
-
-    def _apply_run_formatting(self, node: BagNode, run: Any) -> None:
-        """Apply formatting attributes to a run."""
-        bold = node.attr.get("bold", False)
-        if bold:
-            run.bold = True
-
-        italic = node.attr.get("italic", False)
-        if italic:
-            run.italic = True
-
-        underline = node.attr.get("underline", False)
-        if underline:
-            run.underline = True
-
-        strike = node.attr.get("strike", False)
-        if strike:
-            run.font.strike = True
-
-        font_size = node.attr.get("font_size")
-        if font_size:
-            run.font.size = Pt(font_size)
-
-        font_name = node.attr.get("font_name")
-        if font_name:
-            run.font.name = font_name
-
-        color = node.attr.get("color")
-        if color:
-            run.font.color.rgb = RGBColor.from_string(color)
-
-        highlight = node.attr.get("highlight")
-        if highlight:
-            highlight_map = {
-                "yellow": WD_COLOR_INDEX.YELLOW,
-                "green": WD_COLOR_INDEX.BRIGHT_GREEN,
-                "cyan": WD_COLOR_INDEX.TURQUOISE,
-                "magenta": WD_COLOR_INDEX.PINK,
-                "blue": WD_COLOR_INDEX.BLUE,
-                "red": WD_COLOR_INDEX.RED,
-                "gray": WD_COLOR_INDEX.GRAY_25,
-            }
-            if highlight.lower() in highlight_map:
-                run.font.highlight_color = highlight_map[highlight.lower()]
-
-    def _get_alignment(self, align: str) -> Any:
-        """Convert alignment string to WD_ALIGN_PARAGRAPH."""
-        align_map = {
-            "left": WD_ALIGN_PARAGRAPH.LEFT,
-            "center": WD_ALIGN_PARAGRAPH.CENTER,
-            "right": WD_ALIGN_PARAGRAPH.RIGHT,
-            "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
-        }
-        return align_map.get(align.lower(), WD_ALIGN_PARAGRAPH.LEFT)
-
-    def _compile_itemlist(self, node: BagNode, doc: Any) -> None:
-        """Compile itemlist node."""
-        list_type = node.attr.get("type", "bullet")
-
-        if isinstance(node.value, Bag):
-            for item_node in node.value:
-                if item_node.tag == "item":
-                    self._compile_item(item_node, doc, list_type)
-
-    def _compile_item(self, node: BagNode, doc: Any, list_type: str) -> None:
-        """Compile item node."""
-        content = node.attr.get("content", "")
-        style = "List Number" if list_type == "number" else "List Bullet"
-        para = doc.add_paragraph(content, style=style)
-
-        # Process child runs/paragraphs
-        if isinstance(node.value, Bag):
-            for child in node.value:
-                if child.tag == "run":
-                    self._compile_run_to_paragraph(child, para)
-
-    def _iter_table_rows(
-        self, node: BagNode
-    ) -> Iterator[tuple[BagNode, list[BagNode]]]:
-        """Yield (row_node, cells) tuples from table node."""
-        if not isinstance(node.value, Bag):
-            return
-        for row_node in node.value:
-            if row_node.tag != "row":
-                continue
-            cells: list[BagNode] = []
-            if isinstance(row_node.value, Bag):
-                cells = [c for c in row_node.value if c.tag == "cell"]
-            yield row_node, cells
-
-    def _compile_table(self, node: BagNode, doc: Any) -> None:
-        """Compile table node."""
-        rows_data = list(self._iter_table_rows(node))
-        if not rows_data:
-            return
-
-        num_cols = max(len(cells) for _, cells in rows_data)
-        table = doc.add_table(rows=len(rows_data), cols=num_cols)
-
-        # Table style
-        style = node.attr.get("style")
-        if style:
-            table.style = style
-
-        # Table alignment
-        self._apply_table_alignment(node, table)
-
-        # Populate cells
-        for i, (row_node, cells) in enumerate(rows_data):
-            self._compile_table_row(table, i, row_node, cells)
-
-    def _apply_table_alignment(self, node: BagNode, table: Any) -> None:
-        """Apply alignment to table."""
-        align = node.attr.get("align")
-        if not align:
-            return
-        align_map = {
-            "left": WD_TABLE_ALIGNMENT.LEFT,
-            "center": WD_TABLE_ALIGNMENT.CENTER,
-            "right": WD_TABLE_ALIGNMENT.RIGHT,
-        }
-        if align.lower() in align_map:
-            table.alignment = align_map[align.lower()]
-
-    def _compile_table_row(
-        self, table: Any, row_idx: int, row_node: BagNode, cells: list[BagNode]
-    ) -> None:
-        """Compile a single table row."""
-        table_row = table.rows[row_idx]
-
-        row_height = row_node.attr.get("height")
-        if row_height:
-            table_row.height = Cm(row_height)
-
-        for col_idx, cell_node in enumerate(cells):
-            cell = table.cell(row_idx, col_idx)
-            self._compile_table_cell(cell_node, cell)
-
-    def _compile_table_cell(self, node: BagNode, cell: Any) -> None:
-        """Compile table cell content."""
-        content = node.attr.get("content", "")
-        width = node.attr.get("width")
-        bold = node.attr.get("bold", False)
-        bg_color = node.attr.get("bg_color")
-        align = node.attr.get("align")
-        valign = node.attr.get("valign")
-
-        # Set cell width
-        if width:
-            cell.width = Cm(width)
-
-        # Background color
-        if bg_color:
-            self._set_cell_shading(cell, bg_color)
-
-        # Vertical alignment
-        if valign:
-            valign_map = {
-                "top": WD_CELL_VERTICAL_ALIGNMENT.TOP,
-                "center": WD_CELL_VERTICAL_ALIGNMENT.CENTER,
-                "bottom": WD_CELL_VERTICAL_ALIGNMENT.BOTTOM,
-            }
-            if valign.lower() in valign_map:
-                cell.vertical_alignment = valign_map[valign.lower()]
-
-        # Add content
-        if content:
-            para = cell.paragraphs[0]
-            para.clear()
-            run = para.add_run(str(content))
-
-            if bold:
-                run.bold = True
-
-            # Apply other formatting from node
-            self._apply_run_formatting(node, run)
-
-            # Horizontal alignment
-            if align:
-                para.alignment = self._get_alignment(align)
-
-        # Process child elements
-        if isinstance(node.value, Bag):
-            for child in node.value:
-                if child.tag == "paragraph":
-                    para = cell.add_paragraph()
-                    child_content = child.attr.get("content", "")
-                    if child_content:
-                        run = para.add_run(child_content)
-                        self._apply_run_formatting(child, run)
-                elif child.tag == "run":
-                    para = cell.paragraphs[-1] if cell.paragraphs else cell.add_paragraph()
-                    self._compile_run_to_paragraph(child, para)
-
-    def _set_cell_shading(self, cell: Any, color: str) -> None:
-        """Set cell background color."""
-        shading = OxmlElement("w:shd")
-        shading.set(qn("w:fill"), color)
-        cell._tc.get_or_add_tcPr().append(shading)
-
-    def _compile_image(self, node: BagNode, doc: Any) -> None:
-        """Compile image node."""
-        path = node.attr.get("path", "")
-        width = node.attr.get("width")
-        height = node.attr.get("height")
-        align = node.attr.get("align")
-
-        if not path:
-            return
-
-        # Create paragraph for alignment
-        para = doc.add_paragraph()
-
-        if align:
-            para.alignment = self._get_alignment(align)
-
-        run = para.add_run()
-
-        # Add picture with dimensions
-        if width and height:
-            run.add_picture(path, width=Inches(width), height=Inches(height))
-        elif width:
-            run.add_picture(path, width=Inches(width))
-        elif height:
-            run.add_picture(path, height=Inches(height))
-        else:
-            run.add_picture(path)
-
-    def _compile_pagebreak(self, _node: BagNode, doc: Any) -> None:
-        """Compile pagebreak node."""
-        doc.add_page_break()
-
-    def _compile_header(self, node: BagNode, doc: Any) -> None:
-        """Compile header node."""
-        section = doc.sections[0]
-        header = section.header
-        header.is_linked_to_previous = False
-
-        if isinstance(node.value, Bag):
-            for child in node.value:
-                if child.tag == "paragraph":
-                    content = child.attr.get("content", "")
-                    para = header.add_paragraph(content)
-                    self._apply_paragraph_formatting(child, para)
-                elif child.tag == "run":
-                    para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-                    self._compile_run_to_paragraph(child, para)
-
-    def _compile_footer(self, node: BagNode, doc: Any) -> None:
-        """Compile footer node."""
-        section = doc.sections[0]
-        footer = section.footer
-        footer.is_linked_to_previous = False
-
-        if isinstance(node.value, Bag):
-            for child in node.value:
-                if child.tag == "paragraph":
-                    content = child.attr.get("content", "")
-                    para = footer.add_paragraph(content)
-                    self._apply_paragraph_formatting(child, para)
-                elif child.tag == "run":
-                    para = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-                    self._compile_run_to_paragraph(child, para)
-
-    def _apply_paragraph_formatting(self, node: BagNode, para: Any) -> None:
-        """Apply paragraph-level formatting."""
-        align = node.attr.get("align")
-        if align:
-            para.alignment = self._get_alignment(align)
-
-        # Apply formatting to runs
-        if para.runs:
-            for run in para.runs:
-                self._apply_run_formatting(node, run)

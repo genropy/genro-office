@@ -1,66 +1,77 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""ExcelApp - App per generare spreadsheet Excel (.xlsx)."""
+"""ExcelApp - Reactive app for Excel spreadsheets (.xlsx).
+
+Uses BagAppBase pipeline with ^pointer data binding.
+The recipe defines the spreadsheet template, data provides content.
+
+Example::
+
+    from genro_office import ExcelApp
+
+    class MySpreadsheet(ExcelApp):
+        def recipe(self, store):
+            wb = store.workbook()
+            sheet = wb.sheet(name="Data")
+            row = sheet.row()
+            row.cell(content="^headers.col1")
+            row.cell(content="^headers.col2")
+
+    spreadsheet = MySpreadsheet()
+    spreadsheet.data["headers.col1"] = "Name"
+    spreadsheet.data["headers.col2"] = "Value"
+    spreadsheet.setup()
+    spreadsheet.save("data.xlsx")
+"""
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
-from genro_bag import Bag
+from genro_builders import BagAppBase
 
 from genro_office.builders.excel_builder import ExcelBuilder
+from genro_office.compilers.excel_compiler import ExcelCompiler
 
 
-class ExcelApp:
-    """App per generare spreadsheet Excel (.xlsx).
+class ExcelApp(BagAppBase):
+    """Reactive app for Excel spreadsheet generation.
 
-    Example::
-
-        from genro_office import ExcelApp
-
-        class MySpreadsheet(ExcelApp):
-            def recipe(self, root):
-                wb = root.workbook()
-                sheet = wb.sheet(name="Dati")
-                row = sheet.row()
-                row.cell(content="Nome")
-                row.cell(content="Valore")
-
-        spreadsheet = MySpreadsheet()
-        spreadsheet.save("dati.xlsx")
+    Extends BagAppBase with bytes output and live update support.
     """
 
-    def __init__(self) -> None:
-        self._page = Bag(builder=ExcelBuilder)
-        self._data = Bag()
-        self.recipe(self._page)
+    builder_class = ExcelBuilder
+    compiler_class = ExcelCompiler
+    _output: bytes | None = None  # type: ignore[assignment]
 
     @property
-    def page(self) -> Bag:
-        """The page Bag (workbook structure)."""
-        return self._page
+    def _excel_compiler(self) -> ExcelCompiler:
+        """Return compiler cast to ExcelCompiler."""
+        return cast("ExcelCompiler", self._compiler)
 
-    @property
-    def data(self) -> Bag:
-        """The data Bag (for data binding)."""
-        return self._data
-
-    def recipe(self, root: Bag) -> None:
-        """Override this method to build your spreadsheet.
-
-        Args:
-            root: The root Bag to add elements to.
-        """
-
-    def render(self) -> bytes:
-        """Render the spreadsheet to bytes.
+    def compile(self) -> bytes:  # type: ignore[override]
+        """Full pipeline: materialize -> bind -> render to bytes.
 
         Returns:
-            The Excel workbook as bytes (.xlsx format).
+            Excel workbook as bytes (.xlsx format).
         """
-        builder = cast("ExcelBuilder", self._page.builder)
-        return builder.compile(self._page)
+        if self._compiler is None:
+            msg = (
+                f"{type(self).__name__} has no compiler. "
+                f"Set compiler_class on the app or builder."
+            )
+            raise RuntimeError(msg)
+
+        compiler = self._excel_compiler
+        self._static_bag = compiler.preprocess(self._store)
+        self._binding.bind(self._static_bag, self._data)
+        self._output = compiler.compile_bound(self._static_bag)
+        return self._output
+
+    def render(self) -> bytes:
+        """Render the spreadsheet to bytes. Alias for compile()."""
+        return self.compile()
 
     def save(self, filepath: str) -> None:
         """Save the spreadsheet to a file.
@@ -71,3 +82,23 @@ class ExcelApp:
         content = self.render()
         with open(filepath, "wb") as f:
             f.write(content)
+
+    def _on_node_updated(self, node: Any) -> None:
+        """Called when a bound node is updated via data change.
+
+        Tries live update first, falls back to full recompile.
+        """
+        if not self._auto_compile:
+            return
+
+        compiler = self._excel_compiler
+        if compiler.update_node(node):
+            self._output = compiler.serialize()
+            return
+
+        self._recompile()
+
+    def _recompile(self) -> None:
+        """Re-render the spreadsheet without re-materializing."""
+        if self._compiler is not None and self._static_bag is not None:
+            self._output = self._excel_compiler.compile_bound(self._static_bag)

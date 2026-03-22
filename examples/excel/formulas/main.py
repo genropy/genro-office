@@ -2,7 +2,11 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""Excel spreadsheet with formulas example."""
+"""Excel spreadsheet with formulas example.
+
+Demonstrates formula support, cross-sheet references,
+and ^path?attr data binding for labels.
+"""
 
 from genro_office import ExcelApp
 
@@ -10,20 +14,18 @@ from genro_office import ExcelApp
 class FormulaSpreadsheet(ExcelApp):
     """An Excel spreadsheet with formulas."""
 
-    def recipe(self, root):
-        wb = root.workbook()
+    def recipe(self, store):
+        wb = store.workbook()
 
         # Budget sheet with formulas
         sheet = wb.sheet(name="Budget")
 
-        # Header
-        header = sheet.row(height=20)
-        header.cell(content="Item", bold=True, width=25)
-        header.cell(content="Quantity", bold=True, width=12)
-        header.cell(content="Unit Price", bold=True, width=12)
-        header.cell(content="Total", bold=True, width=15)
+        header = sheet.row(height=20.0)
+        header.cell(content="Item", bold=True, width=25.0)
+        header.cell(content="Quantity", bold=True, width=12.0)
+        header.cell(content="Unit Price", bold=True, width=12.0)
+        header.cell(content="Total", bold=True, width=15.0)
 
-        # Data rows with calculated totals
         items = [
             ("Laptops", 10, 1200),
             ("Monitors", 15, 350),
@@ -37,14 +39,11 @@ class FormulaSpreadsheet(ExcelApp):
             row.cell(content=item)
             row.cell(content=qty)
             row.cell(content=price)
-            # Formula: Quantity * Unit Price
             row.cell(formula=f"=B{i}*C{i}")
 
-        # Empty row
         sheet.row()
 
-        # Totals row
-        totals_row = sheet.row(height=25)
+        totals_row = sheet.row(height=25.0)
         totals_row.cell(content="TOTALS", bold=True)
         totals_row.cell(formula="=SUM(B2:B6)", bold=True)
         totals_row.cell(content="")
@@ -53,11 +52,10 @@ class FormulaSpreadsheet(ExcelApp):
         # Statistics sheet
         stats = wb.sheet(name="Statistics")
 
-        stats_header = stats.row(height=20)
-        stats_header.cell(content="Metric", bold=True, width=20)
-        stats_header.cell(content="Value", bold=True, width=15)
+        stats_header = stats.row(height=20.0)
+        stats_header.cell(content="Metric", bold=True, width=20.0)
+        stats_header.cell(content="Value", bold=True, width=15.0)
 
-        # Reference the Budget sheet in formulas
         metrics = [
             ("Total Items", "=SUM(Budget!B2:B6)"),
             ("Total Cost", "=SUM(Budget!D2:D6)"),
@@ -71,18 +69,19 @@ class FormulaSpreadsheet(ExcelApp):
             row.cell(content=metric)
             row.cell(formula=formula)
 
-        # Tax calculation
         stats.row()
         tax_row = stats.row()
-        tax_row.cell(content="Tax (22%)", italic=True)
+        tax_row.cell(content="^tax?label", italic=True)
         tax_row.cell(formula="=SUM(Budget!D2:D6)*0.22")
 
-        grand_total = stats.row(height=25)
+        grand_total = stats.row(height=25.0)
         grand_total.cell(content="Grand Total", bold=True)
         grand_total.cell(formula="=SUM(Budget!D2:D6)*1.22", bold=True)
 
 
 if __name__ == "__main__":
     spreadsheet = FormulaSpreadsheet()
+    spreadsheet.data.set_item("tax", "", label="Tax (22%)")
+    spreadsheet.setup()
     spreadsheet.save("output.xlsx")
     print("Created: output.xlsx")

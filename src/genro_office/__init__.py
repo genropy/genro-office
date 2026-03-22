@@ -1,21 +1,24 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""genro-office: Office document generation for Genropy.
+"""genro-office: Reactive office document generation for Genropy.
 
-Two apps for office documents:
+Two apps for office documents with ^pointer data binding:
 
 1. WordApp - Generate Word documents (.docx):
     ```python
     from genro_office import WordApp
 
     class MyReport(WordApp):
-        def recipe(self, root):
-            doc = root.document(title="Report")
-            doc.heading(content="Introduction", level=1)
-            doc.paragraph(content="Hello World!")
+        def recipe(self, store):
+            doc = store.document()
+            doc.heading(content="^doc.title", level=1)
+            doc.paragraph(content="^doc.body")
 
     report = MyReport()
+    report.data["doc.title"] = "Introduction"
+    report.data["doc.body"] = "Hello World!"
+    report.setup()
     report.save("report.docx")
     ```
 
@@ -24,38 +27,43 @@ Two apps for office documents:
     from genro_office import ExcelApp
 
     class MySpreadsheet(ExcelApp):
-        def recipe(self, root):
-            wb = root.workbook()
+        def recipe(self, store):
+            wb = store.workbook()
             sheet = wb.sheet(name="Data")
             row = sheet.row()
-            row.cell(content="Name")
-            row.cell(content="Value")
+            row.cell(content="^headers.name")
+            row.cell(content="^headers.value")
 
     spreadsheet = MySpreadsheet()
+    spreadsheet.data["headers.name"] = "Name"
+    spreadsheet.data["headers.value"] = "Value"
+    spreadsheet.setup()
     spreadsheet.save("data.xlsx")
     ```
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
 ]
 
-# Optional: WordBuilder and WordApp (requires python-docx)
+# Optional: WordBuilder, WordCompiler and WordApp (requires python-docx)
 try:
     from genro_office.builders.word_builder import WordBuilder as WordBuilder
+    from genro_office.compilers.word_compiler import WordCompiler as WordCompiler
     from genro_office.word_app import WordApp as WordApp
 
-    __all__.extend(["WordApp", "WordBuilder"])
+    __all__.extend(["WordApp", "WordBuilder", "WordCompiler"])
 except ImportError:
     pass
 
-# Optional: ExcelBuilder and ExcelApp (requires openpyxl)
+# Optional: ExcelBuilder, ExcelCompiler and ExcelApp (requires openpyxl)
 try:
     from genro_office.builders.excel_builder import ExcelBuilder as ExcelBuilder
+    from genro_office.compilers.excel_compiler import ExcelCompiler as ExcelCompiler
     from genro_office.excel_app import ExcelApp as ExcelApp
 
-    __all__.extend(["ExcelApp", "ExcelBuilder"])
+    __all__.extend(["ExcelApp", "ExcelBuilder", "ExcelCompiler"])
 except ImportError:
     pass
