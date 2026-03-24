@@ -83,7 +83,7 @@ class WordCompiler(BagCompilerBase):
 
         Handles runs (font properties) and paragraphs (alignment).
         """
-        tag = node.tag or ""
+        tag = node.node_tag or ""
 
         if tag == "run":
             self._apply_run_formatting(node, live_obj)
@@ -120,7 +120,7 @@ class WordCompiler(BagCompilerBase):
 
     def _build_node(self, node: BagNode, doc: Any) -> None:
         """Build a single node into the Document."""
-        tag = node.tag or ""
+        tag = node.node_tag or ""
 
         build_method = getattr(self, f"_build_{tag}", None)
         if build_method:
@@ -176,7 +176,7 @@ class WordCompiler(BagCompilerBase):
 
         if isinstance(node.value, Bag):
             for child in node.value:
-                if child.tag == "run":
+                if child.node_tag == "run":
                     self._build_run_to_paragraph(child, heading)
 
     def _build_paragraph(self, node: BagNode, doc: Any) -> None:
@@ -208,7 +208,7 @@ class WordCompiler(BagCompilerBase):
 
         if isinstance(node.value, Bag):
             for child in node.value:
-                if child.tag == "run":
+                if child.node_tag == "run":
                     self._build_run_to_paragraph(child, para)
 
     def _build_run_to_paragraph(self, node: BagNode, para: Any) -> None:
@@ -224,7 +224,7 @@ class WordCompiler(BagCompilerBase):
 
         if isinstance(node.value, Bag):
             for item_node in node.value:
-                if item_node.tag == "item":
+                if item_node.node_tag == "item":
                     self._build_item(item_node, doc, list_type)
 
     def _build_item(self, node: BagNode, doc: Any, list_type: str) -> None:
@@ -236,7 +236,7 @@ class WordCompiler(BagCompilerBase):
 
         if isinstance(node.value, Bag):
             for child in node.value:
-                if child.tag == "run":
+                if child.node_tag == "run":
                     self._build_run_to_paragraph(child, para)
 
     def _iter_table_rows(
@@ -246,11 +246,11 @@ class WordCompiler(BagCompilerBase):
         if not isinstance(node.value, Bag):
             return
         for row_node in node.value:
-            if row_node.tag != "row":
+            if row_node.node_tag != "row":
                 continue
             cells: list[BagNode] = []
             if isinstance(row_node.value, Bag):
-                cells = [c for c in row_node.value if c.tag == "cell"]
+                cells = [c for c in row_node.value if c.node_tag == "cell"]
             yield row_node, cells
 
     def _build_table(self, node: BagNode, doc: Any) -> None:
@@ -338,14 +338,14 @@ class WordCompiler(BagCompilerBase):
 
         if isinstance(node.value, Bag):
             for child in node.value:
-                if child.tag == "paragraph":
+                if child.node_tag == "paragraph":
                     para = cell.add_paragraph()
                     child_content = child.attr.get("content", "")
                     if child_content:
                         run = para.add_run(str(child_content))
                         self._apply_run_formatting(child, run)
                         self._live_map[id(child)] = run
-                elif child.tag == "run":
+                elif child.node_tag == "run":
                     para = cell.paragraphs[-1] if cell.paragraphs else cell.add_paragraph()
                     self._build_run_to_paragraph(child, para)
 
@@ -393,11 +393,11 @@ class WordCompiler(BagCompilerBase):
 
         if isinstance(node.value, Bag):
             for child in node.value:
-                if child.tag == "paragraph":
+                if child.node_tag == "paragraph":
                     content = child.attr.get("content", "")
                     para = header.add_paragraph(str(content))
                     self._apply_paragraph_formatting(child, para)
-                elif child.tag == "run":
+                elif child.node_tag == "run":
                     para = (
                         header.paragraphs[0]
                         if header.paragraphs
@@ -413,11 +413,11 @@ class WordCompiler(BagCompilerBase):
 
         if isinstance(node.value, Bag):
             for child in node.value:
-                if child.tag == "paragraph":
+                if child.node_tag == "paragraph":
                     content = child.attr.get("content", "")
                     para = footer.add_paragraph(str(content))
                     self._apply_paragraph_formatting(child, para)
-                elif child.tag == "run":
+                elif child.node_tag == "run":
                     para = (
                         footer.paragraphs[0]
                         if footer.paragraphs
@@ -494,7 +494,7 @@ class WordCompiler(BagCompilerBase):
                 self._apply_run_formatting(node, run)
 
 
-# Set compiler_class after WordCompiler is defined
+# Set _compiler_class after WordCompiler is defined
 from genro_office.builders.word_builder import WordBuilder  # noqa: E402
 
-WordBuilder.compiler_class = WordCompiler
+WordBuilder._compiler_class = WordCompiler

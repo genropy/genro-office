@@ -28,7 +28,7 @@ except ImportError:
 class ExcelBuilder(BagBuilderBase):
     """Builder for Excel spreadsheets (.xlsx) using openpyxl."""
 
-    compiler_class: type | None = None
+    _compiler_class: type | None = None
 
     def __init__(self, bag: Bag) -> None:
         if not OPENPYXL_AVAILABLE:

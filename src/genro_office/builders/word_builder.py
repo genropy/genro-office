@@ -28,7 +28,7 @@ except ImportError:
 class WordBuilder(BagBuilderBase):
     """Builder for Word documents (.docx) using python-docx."""
 
-    compiler_class: type | None = None
+    _compiler_class: type | None = None
 
     def __init__(self, bag: Bag) -> None:
         if not DOCX_AVAILABLE:

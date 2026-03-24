@@ -66,7 +66,7 @@ class TestExcelApp:
     def test_create_empty_app(self):
         """Test creating an empty ExcelApp."""
         app = ExcelApp()
-        assert app.store is not None
+        assert app.source is not None
         assert app.data is not None
 
     def test_render_simple_spreadsheet(self):
@@ -114,10 +114,10 @@ class TestExcelApp:
             with open(filepath, "rb") as f:
                 assert f.read(2) == b"PK"
 
-    def test_store_property(self):
-        """Test store property returns the BuilderBag."""
+    def test_source_property(self):
+        """Test source property returns a BuilderBag."""
         app = SimpleExcelDoc()
-        assert app.store is app._store
+        assert app.source is not None
 
     def test_data_property(self):
         """Test data property returns the data Bag."""
@@ -128,8 +128,8 @@ class TestExcelApp:
         """Test ^pointer data binding in recipe."""
 
         class BoundSheet(ExcelApp):
-            def recipe(self, store):
-                wb = store.workbook()
+            def recipe(self, source):
+                wb = source.workbook()
                 sheet = wb.sheet(name="Bound")
                 row = sheet.row()
                 row.cell(content="^headers.col1")

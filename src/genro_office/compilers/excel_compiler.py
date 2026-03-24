@@ -75,7 +75,7 @@ class ExcelCompiler(BagCompilerBase):
 
     def _apply_live_update(self, node: BagNode, live_cell: Any) -> bool:
         """Apply attribute changes to a live openpyxl cell."""
-        tag = node.tag or ""
+        tag = node.node_tag or ""
 
         if tag == "cell":
             formula = node.attr.get("formula")
@@ -126,7 +126,7 @@ class ExcelCompiler(BagCompilerBase):
 
     def _build_node(self, node: BagNode, wb: Any) -> None:
         """Build a single node into the Workbook."""
-        tag = node.tag or ""
+        tag = node.node_tag or ""
 
         build_method = getattr(self, f"_build_{tag}", None)
         if build_method:
@@ -157,12 +157,12 @@ class ExcelCompiler(BagCompilerBase):
 
             row_idx = 1
             for child_node in node.value:
-                if child_node.tag == "row":
+                if child_node.node_tag == "row":
                     self._build_row(child_node, ws, row_idx)
                     row_idx += 1
-                elif child_node.tag == "merge":
+                elif child_node.node_tag == "merge":
                     merge_nodes.append(child_node)
-                elif child_node.tag == "chart":
+                elif child_node.node_tag == "chart":
                     chart_nodes.append(child_node)
 
             for merge_node in merge_nodes:
@@ -184,7 +184,7 @@ class ExcelCompiler(BagCompilerBase):
         if isinstance(node.value, Bag):
             col_idx = 1
             for cell_node in node.value:
-                if cell_node.tag == "cell":
+                if cell_node.node_tag == "cell":
                     self._build_cell(cell_node, ws, row_idx, col_idx)
                     col_idx += 1
 
@@ -338,7 +338,7 @@ class ExcelCompiler(BagCompilerBase):
             cell.border = Border(left=side, right=side, top=side, bottom=side)
 
 
-# Set compiler_class after ExcelCompiler is defined
+# Set _compiler_class after ExcelCompiler is defined
 from genro_office.builders.excel_builder import ExcelBuilder  # noqa: E402
 
-ExcelBuilder.compiler_class = ExcelCompiler
+ExcelBuilder._compiler_class = ExcelCompiler

@@ -11,8 +11,8 @@ Example::
     from genro_office import WordApp
 
     class MyReport(WordApp):
-        def recipe(self, store):
-            doc = store.document(title="^doc?title")
+        def recipe(self, source):
+            doc = source.document(title="^doc?title")
             doc.heading(content="^doc?heading", level=1)
             doc.paragraph(content="^doc?body")
 
@@ -28,11 +28,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 from genro_builders import BagAppBase
 
-if TYPE_CHECKING:
-    from genro_bag import Bag
-
 from genro_office.builders.word_builder import WordBuilder
 from genro_office.compilers.word_compiler import WordCompiler
+
+if TYPE_CHECKING:
+    from genro_bag import Bag
 
 
 class WordApp(BagAppBase):

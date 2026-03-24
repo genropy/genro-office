@@ -11,8 +11,8 @@ Example::
     from genro_office import ExcelApp
 
     class MySpreadsheet(ExcelApp):
-        def recipe(self, store):
-            wb = store.workbook()
+        def recipe(self, source):
+            wb = source.workbook()
             sheet = wb.sheet(name="Data")
             row = sheet.row()
             row.cell(content="^headers?col1")
@@ -30,11 +30,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 from genro_builders import BagAppBase
 
-if TYPE_CHECKING:
-    from genro_bag import Bag
-
 from genro_office.builders.excel_builder import ExcelBuilder
 from genro_office.compilers.excel_compiler import ExcelCompiler
+
+if TYPE_CHECKING:
+    from genro_bag import Bag
 
 
 class ExcelApp(BagAppBase):

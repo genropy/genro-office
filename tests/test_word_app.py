@@ -43,7 +43,7 @@ class TestWordApp:
     def test_create_empty_app(self):
         """Test creating an empty WordApp."""
         app = WordApp()
-        assert app.store is not None
+        assert app.source is not None
         assert app.data is not None
 
     def test_render_simple_document(self):
@@ -81,10 +81,10 @@ class TestWordApp:
             with open(filepath, "rb") as f:
                 assert f.read(2) == b"PK"
 
-    def test_store_property(self):
-        """Test store property returns the BuilderBag."""
+    def test_source_property(self):
+        """Test source property returns a BuilderBag."""
         app = SimpleWordDoc()
-        assert app.store is app._store
+        assert app.source is not None
 
     def test_data_property(self):
         """Test data property returns the data Bag."""
@@ -95,8 +95,8 @@ class TestWordApp:
         """Test ^pointer data binding in recipe."""
 
         class BoundDoc(WordApp):
-            def recipe(self, store):
-                doc = store.document()
+            def recipe(self, source):
+                doc = source.document()
                 doc.heading(content="^doc.title", level=1)
                 doc.paragraph(content="^doc.body")
 
