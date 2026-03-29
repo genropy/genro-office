@@ -9,13 +9,10 @@ Compilation is handled by ExcelCompiler.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from genro_builders import BagBuilderBase
 from genro_builders.builder import element
-
-if TYPE_CHECKING:
-    from genro_bag import Bag
 
 try:
     from openpyxl import Workbook as _Workbook  # noqa: F401
@@ -30,11 +27,11 @@ class ExcelBuilder(BagBuilderBase):
 
     _compiler_class: type | None = None
 
-    def __init__(self, bag: Bag) -> None:
+    def __init__(self, bag: Any = None, **kwargs: Any) -> None:
         if not OPENPYXL_AVAILABLE:
             msg = "openpyxl required: pip install openpyxl"
             raise ImportError(msg)
-        super().__init__(bag)
+        super().__init__(bag, **kwargs)
 
     # -------------------------------------------------------------------------
     # Element definitions

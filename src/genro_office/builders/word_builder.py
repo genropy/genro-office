@@ -9,13 +9,10 @@ Compilation is handled by WordCompiler.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any
 
 from genro_builders import BagBuilderBase
 from genro_builders.builder import element
-
-if TYPE_CHECKING:
-    from genro_bag import Bag
 
 try:
     from docx import Document as _Document  # noqa: F401
@@ -30,11 +27,11 @@ class WordBuilder(BagBuilderBase):
 
     _compiler_class: type | None = None
 
-    def __init__(self, bag: Bag) -> None:
+    def __init__(self, bag: Any = None, **kwargs: Any) -> None:
         if not DOCX_AVAILABLE:
             msg = "python-docx required: pip install python-docx"
             raise ImportError(msg)
-        super().__init__(bag)
+        super().__init__(bag, **kwargs)
 
     # -------------------------------------------------------------------------
     # Element definitions

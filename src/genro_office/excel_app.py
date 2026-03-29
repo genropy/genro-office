@@ -1,10 +1,10 @@
 # Copyright 2025 Softwell S.r.l. - Licensed under Apache License 2.0
 # See LICENSE file for details
 
-"""ExcelApp - Reactive app for Excel spreadsheets (.xlsx).
+"""ExcelApp — reactive app for Excel spreadsheets (.xlsx).
 
-Uses BagAppBase pipeline with ^pointer data binding.
-The recipe defines the spreadsheet template, data provides content.
+Subclass ExcelApp and override ``recipe()`` to define the spreadsheet
+template. Data binding with ``^pointer`` is fully supported.
 
 Example::
 
@@ -20,7 +20,7 @@ Example::
 
     spreadsheet = MySpreadsheet()
     spreadsheet.data.set_item("headers", "", col1="Name", col2="Value")
-    spreadsheet.setup()
+    spreadsheet.build()
     spreadsheet.save("data.xlsx")
 """
 
@@ -28,40 +28,56 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from genro_builders import BagAppBase
+from genro_builders import BuilderManager
 
 from genro_office.builders.excel_builder import ExcelBuilder
-from genro_office.compilers.excel_compiler import ExcelCompiler
 
 if TYPE_CHECKING:
-    from genro_bag import Bag
+    from genro_office.compilers.excel_compiler import ExcelCompiler
 
 
-class ExcelApp(BagAppBase):
+class ExcelApp(BuilderManager):
     """Reactive app for Excel spreadsheet generation.
 
-    Extends BagAppBase with bytes output and live update support.
+    Subclass and override ``recipe(source)`` to define the template.
+    Call ``build()`` to populate and render, then ``save()`` to write.
     """
 
-    builder_class = ExcelBuilder
-    compiler_class = ExcelCompiler
-    _output: bytes | None = None  # type: ignore[assignment]
+    def __init__(self) -> None:
+        self.builder = self.set_builder("main", ExcelBuilder)
+
+    @property
+    def output(self) -> bytes | None:
+        """Last rendered output as bytes (.xlsx format)."""
+        return self.builder._output  # type: ignore[no-any-return]
 
     @property
     def _excel_compiler(self) -> ExcelCompiler:
         """Return compiler cast to ExcelCompiler."""
-        return cast("ExcelCompiler", self._compiler)
+        return cast("ExcelCompiler", self.builder._compiler_instance)
 
-    def render(self, compiled_bag: Bag) -> bytes:  # type: ignore[override]
-        """Render a CompiledBag to Excel workbook bytes.
+    def recipe(self, source: Any) -> None:
+        """Define the spreadsheet template. Override in subclass.
 
         Args:
-            compiled_bag: The compiled Bag (components expanded, pointers resolved).
+            source: The source BuilderBag to populate with elements.
+        """
+
+    def build(self) -> None:
+        """Run the recipe and build the spreadsheet."""
+        self.recipe(self.builder.source)
+        self.builder.build()
+
+    def render(self, built_bag: Any) -> bytes:
+        """Render the built Bag to Excel workbook bytes.
+
+        Args:
+            built_bag: The built Bag to render.
 
         Returns:
             Excel workbook as bytes (.xlsx format).
         """
-        return self._excel_compiler.render(compiled_bag)
+        return self._excel_compiler.render(built_bag)
 
     def save(self, filepath: str) -> None:
         """Save the spreadsheet to a file.
@@ -69,22 +85,9 @@ class ExcelApp(BagAppBase):
         Args:
             filepath: The path to save the spreadsheet to.
         """
-        if self._output is None:
-            self.compile()
+        output = self.output
+        if output is None:
+            self.build()
+            output = self.output
         with open(filepath, "wb") as f:
-            f.write(self._output)  # type: ignore[arg-type]
-
-    def _on_node_updated(self, node: Any) -> None:
-        """Called when a bound node is updated via data change.
-
-        Tries live update first, falls back to full re-render.
-        """
-        if not self._auto_compile:
-            return
-
-        compiler = self._excel_compiler
-        if compiler.update_node(node):
-            self._output = compiler.serialize()
-            return
-
-        self._rerender()
+            f.write(output)  # type: ignore[arg-type]

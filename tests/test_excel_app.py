@@ -14,8 +14,8 @@ from genro_office import ExcelApp
 class SimpleExcelDoc(ExcelApp):
     """Simple Excel spreadsheet for testing."""
 
-    def recipe(self, store):
-        wb = store.workbook()
+    def recipe(self, source):
+        wb = source.workbook()
         sheet = wb.sheet(name="Data")
 
         row1 = sheet.row()
@@ -30,8 +30,8 @@ class SimpleExcelDoc(ExcelApp):
 class ExcelDocWithFormula(ExcelApp):
     """Excel spreadsheet with formula for testing."""
 
-    def recipe(self, store):
-        wb = store.workbook()
+    def recipe(self, source):
+        wb = source.workbook()
         sheet = wb.sheet(name="Calculations")
 
         row1 = sheet.row()
@@ -50,8 +50,8 @@ class ExcelDocWithFormula(ExcelApp):
 class ExcelDocWithStyling(ExcelApp):
     """Excel spreadsheet with styling for testing."""
 
-    def recipe(self, store):
-        wb = store.workbook()
+    def recipe(self, source):
+        wb = source.workbook()
         sheet = wb.sheet(name="Styled")
 
         row = sheet.row(height=30.0)
@@ -66,13 +66,13 @@ class TestExcelApp:
     def test_create_empty_app(self):
         """Test creating an empty ExcelApp."""
         app = ExcelApp()
-        assert app.source is not None
+        assert app.builder.source is not None
         assert app.data is not None
 
     def test_render_simple_spreadsheet(self):
         """Test rendering a simple spreadsheet."""
         app = SimpleExcelDoc()
-        app.setup()
+        app.build()
         result = app.output
 
         assert isinstance(result, bytes)
@@ -82,7 +82,7 @@ class TestExcelApp:
     def test_render_spreadsheet_with_formula(self):
         """Test rendering a spreadsheet with formula."""
         app = ExcelDocWithFormula()
-        app.setup()
+        app.build()
         result = app.output
 
         assert isinstance(result, bytes)
@@ -92,7 +92,7 @@ class TestExcelApp:
     def test_render_spreadsheet_with_styling(self):
         """Test rendering a spreadsheet with styling."""
         app = ExcelDocWithStyling()
-        app.setup()
+        app.build()
         result = app.output
 
         assert isinstance(result, bytes)
@@ -102,7 +102,7 @@ class TestExcelApp:
     def test_save_spreadsheet(self):
         """Test saving a spreadsheet to file."""
         app = SimpleExcelDoc()
-        app.setup()
+        app.build()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "test.xlsx"
@@ -117,12 +117,12 @@ class TestExcelApp:
     def test_source_property(self):
         """Test source property returns a BuilderBag."""
         app = SimpleExcelDoc()
-        assert app.source is not None
+        assert app.builder.source is not None
 
     def test_data_property(self):
-        """Test data property returns the data Bag."""
+        """Test data property returns the shared data Bag."""
         app = SimpleExcelDoc()
-        assert app.data is app._data
+        assert app.data is app.builder.data
 
     def test_data_binding(self):
         """Test ^pointer data binding in recipe."""
@@ -138,7 +138,7 @@ class TestExcelApp:
         app = BoundSheet()
         app.data["headers.col1"] = "Name"
         app.data["headers.col2"] = "Value"
-        app.setup()
+        app.build()
 
         result = app.output
         assert isinstance(result, bytes)

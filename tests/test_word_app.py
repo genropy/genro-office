@@ -14,8 +14,8 @@ from genro_office import WordApp
 class SimpleWordDoc(WordApp):
     """Simple Word document for testing."""
 
-    def recipe(self, store):
-        doc = store.document(title="Test Document")
+    def recipe(self, source):
+        doc = source.document(title="Test Document")
         doc.heading(content="Chapter 1", level=1)
         doc.paragraph(content="This is a test paragraph.")
 
@@ -23,8 +23,8 @@ class SimpleWordDoc(WordApp):
 class WordDocWithTable(WordApp):
     """Word document with table for testing."""
 
-    def recipe(self, store):
-        doc = store.document(title="Table Test")
+    def recipe(self, source):
+        doc = source.document(title="Table Test")
         doc.paragraph(content="Here is a table:")
 
         table = doc.table()
@@ -43,13 +43,13 @@ class TestWordApp:
     def test_create_empty_app(self):
         """Test creating an empty WordApp."""
         app = WordApp()
-        assert app.source is not None
+        assert app.builder.source is not None
         assert app.data is not None
 
     def test_render_simple_document(self):
         """Test rendering a simple document."""
         app = SimpleWordDoc()
-        app.setup()
+        app.build()
         result = app.output
 
         assert isinstance(result, bytes)
@@ -59,7 +59,7 @@ class TestWordApp:
     def test_render_document_with_table(self):
         """Test rendering a document with a table."""
         app = WordDocWithTable()
-        app.setup()
+        app.build()
         result = app.output
 
         assert isinstance(result, bytes)
@@ -69,7 +69,7 @@ class TestWordApp:
     def test_save_document(self):
         """Test saving a document to file."""
         app = SimpleWordDoc()
-        app.setup()
+        app.build()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "test.docx"
@@ -84,12 +84,12 @@ class TestWordApp:
     def test_source_property(self):
         """Test source property returns a BuilderBag."""
         app = SimpleWordDoc()
-        assert app.source is not None
+        assert app.builder.source is not None
 
     def test_data_property(self):
-        """Test data property returns the data Bag."""
+        """Test data property returns the shared data Bag."""
         app = SimpleWordDoc()
-        assert app.data is app._data
+        assert app.data is app.builder.data
 
     def test_data_binding(self):
         """Test ^pointer data binding in recipe."""
@@ -103,7 +103,7 @@ class TestWordApp:
         app = BoundDoc()
         app.data["doc.title"] = "Bound Title"
         app.data["doc.body"] = "Bound content paragraph."
-        app.setup()
+        app.build()
 
         result = app.output
         assert isinstance(result, bytes)
