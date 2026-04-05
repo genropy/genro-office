@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "genro-office"
-version = "0.4.0"
+version = "0.4.5"
 description = "Office document generation for Genropy - Word and Excel builders"
 readme = "README.md"
 license = "Apache-2.0"
