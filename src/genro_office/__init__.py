@@ -10,14 +10,13 @@ Two apps for office documents with ^pointer data binding:
     from genro_office import WordApp
 
     class MyReport(WordApp):
-        def recipe(self, source):
+        def main(self, source):
             doc = source.document()
-            doc.heading(content="^doc.title", level=1)
-            doc.paragraph(content="^doc.body")
+            doc.heading(content="^doc?title", level=1)
+            doc.paragraph(content="^doc?body")
 
     report = MyReport()
-    report.data["doc.title"] = "Introduction"
-    report.data["doc.body"] = "Hello World!"
+    report.data.set_item("doc", "", title="Introduction", body="Hello World!")
     report.build()
     report.save("report.docx")
     ```
@@ -27,22 +26,21 @@ Two apps for office documents with ^pointer data binding:
     from genro_office import ExcelApp
 
     class MySpreadsheet(ExcelApp):
-        def recipe(self, source):
+        def main(self, source):
             wb = source.workbook()
             sheet = wb.sheet(name="Data")
             row = sheet.row()
-            row.cell(content="^headers.name")
-            row.cell(content="^headers.value")
+            row.cell(content="^headers?col1")
+            row.cell(content="^headers?col2")
 
     spreadsheet = MySpreadsheet()
-    spreadsheet.data["headers.name"] = "Name"
-    spreadsheet.data["headers.value"] = "Value"
+    spreadsheet.data.set_item("headers", "", col1="Name", col2="Value")
     spreadsheet.build()
     spreadsheet.save("data.xlsx")
     ```
 """
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "__version__",

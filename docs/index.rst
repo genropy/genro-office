@@ -24,8 +24,8 @@ Word Document
 
 
    class MyReport(WordApp):
-       def recipe(self, root):
-           doc = root.document(title="Report")
+       def main(self, source):
+           doc = source.document(title="Report")
            doc.heading(content="Introduction", level=1)
            doc.paragraph(content="Hello World!")
 
@@ -42,8 +42,8 @@ Excel Spreadsheet
 
 
    class MySheet(ExcelApp):
-       def recipe(self, root):
-           wb = root.workbook()
+       def main(self, source):
+           wb = source.workbook()
            sheet = wb.sheet(name="Data")
            sheet.row().cell(content="Name").cell(content="Value")
            sheet.row().cell(content="Item").cell(content=100)

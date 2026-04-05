@@ -39,6 +39,19 @@ class WordCompiler(BagCompilerBase):
         super().__init__(builder)
         self._doc: Any | None = None
         self._live_map: dict[int, Any] = {}
+        self._custom_handlers: dict[str, Any] = {}
+
+    def register_handler(self, tag: str, handler: Any) -> None:
+        """Register a custom build handler for a tag.
+
+        The handler receives (node, doc) and is called during document
+        building. Custom handlers take precedence over built-in ones.
+
+        Args:
+            tag: The element tag name (e.g., "qrcode").
+            handler: Callable(node, doc) that builds the element.
+        """
+        self._custom_handlers[tag] = handler
 
     # -------------------------------------------------------------------------
     # Rendering (CompiledBag → bytes)
@@ -81,15 +94,18 @@ class WordCompiler(BagCompilerBase):
     def _apply_live_update(self, node: BagNode, live_obj: Any) -> bool:
         """Apply attribute changes to a live docx object.
 
-        Handles runs (font properties) and paragraphs (alignment).
+        Handles runs, paragraphs, headings, table cells, and list items.
         """
         tag = node.node_tag or ""
 
-        if tag == "run":
+        if tag in ("run", "cell"):
             self._apply_run_formatting(node, live_obj)
+            content = node.attr.get("content", "")
+            if content:
+                live_obj.text = str(content)
             return True
 
-        if tag in ("paragraph", "heading"):
+        if tag in ("paragraph", "heading", "item"):
             if hasattr(live_obj, "runs") and live_obj.runs:
                 content = node.attr.get("content", "")
                 if content and live_obj.runs:
@@ -122,7 +138,9 @@ class WordCompiler(BagCompilerBase):
         """Build a single node into the Document."""
         tag = node.node_tag or ""
 
-        build_method = getattr(self, f"_build_{tag}", None)
+        build_method = self._custom_handlers.get(tag)
+        if build_method is None:
+            build_method = getattr(self, f"_build_{tag}", None)
         if build_method:
             build_method(node, doc)
 

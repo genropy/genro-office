@@ -14,8 +14,8 @@ from genro_office import WordApp
 class ReportDocument(WordApp):
     """A business report with multiple sections and tables."""
 
-    def recipe(self, store):
-        doc = store.document(title="^report?title")
+    def main(self, source):
+        doc = source.document(title="^report?title")
 
         doc.heading(content="^sections?summary", level=1)
         doc.paragraph(content="^content?summary")
@@ -94,6 +94,6 @@ if __name__ == "__main__":
         item3="3. Achieved 99.9% service uptime",
     )
 
-    report.setup()
+    report.build()
     report.save("output.docx")
     print("Created: output.docx")

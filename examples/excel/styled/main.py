@@ -14,8 +14,8 @@ from genro_office import ExcelApp
 class StyledSpreadsheet(ExcelApp):
     """An Excel spreadsheet with styled cells."""
 
-    def recipe(self, store):
-        wb = store.workbook()
+    def main(self, source):
+        wb = source.workbook()
 
         sheet = wb.sheet(name="Styled Report")
 
@@ -84,6 +84,6 @@ if __name__ == "__main__":
         title="Quarterly Report",
         notes="Note: All values in USD",
     )
-    spreadsheet.setup()
+    spreadsheet.build()
     spreadsheet.save("output.xlsx")
     print("Created: output.xlsx")

@@ -3,7 +3,7 @@
 
 """ExcelApp — reactive app for Excel spreadsheets (.xlsx).
 
-Subclass ExcelApp and override ``recipe()`` to define the spreadsheet
+Subclass ExcelApp and override ``main()`` to define the spreadsheet
 template. Data binding with ``^pointer`` is fully supported.
 
 Example::
@@ -11,7 +11,7 @@ Example::
     from genro_office import ExcelApp
 
     class MySpreadsheet(ExcelApp):
-        def recipe(self, source):
+        def main(self, source):
             wb = source.workbook()
             sheet = wb.sheet(name="Data")
             row = sheet.row()
@@ -33,18 +33,29 @@ from genro_builders import BuilderManager
 from genro_office.builders.excel_builder import ExcelBuilder
 
 if TYPE_CHECKING:
+    from genro_bag import Bag
+
     from genro_office.compilers.excel_compiler import ExcelCompiler
 
 
 class ExcelApp(BuilderManager):
     """Reactive app for Excel spreadsheet generation.
 
-    Subclass and override ``recipe(source)`` to define the template.
+    Subclass and override ``main(source)`` to define the template.
     Call ``build()`` to populate and render, then ``save()`` to write.
     """
 
     def __init__(self) -> None:
         self.builder = self.set_builder("main", ExcelBuilder)
+
+    @property
+    def data(self) -> Bag:
+        """The shared reactive data store (convenience alias for reactive_store)."""
+        return self.reactive_store
+
+    @data.setter
+    def data(self, value: Bag | dict[str, Any]) -> None:
+        self.reactive_store = value
 
     @property
     def output(self) -> bytes | None:
@@ -56,17 +67,18 @@ class ExcelApp(BuilderManager):
         """Return compiler cast to ExcelCompiler."""
         return cast("ExcelCompiler", self.builder._compiler_instance)
 
-    def recipe(self, source: Any) -> None:
+    def build(self) -> None:
+        """Run the full pipeline: setup, build, render."""
+        self.setup()
+        super().build()
+        self.builder._output = self.builder.render()
+
+    def main(self, source: Any) -> None:
         """Define the spreadsheet template. Override in subclass.
 
         Args:
             source: The source BuilderBag to populate with elements.
         """
-
-    def build(self) -> None:
-        """Run the recipe and build the spreadsheet."""
-        self.recipe(self.builder.source)
-        self.builder.build()
 
     def render(self, built_bag: Any) -> bytes:
         """Render the built Bag to Excel workbook bytes.

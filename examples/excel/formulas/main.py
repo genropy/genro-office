@@ -14,8 +14,8 @@ from genro_office import ExcelApp
 class FormulaSpreadsheet(ExcelApp):
     """An Excel spreadsheet with formulas."""
 
-    def recipe(self, store):
-        wb = store.workbook()
+    def main(self, source):
+        wb = source.workbook()
 
         # Budget sheet with formulas
         sheet = wb.sheet(name="Budget")
@@ -82,6 +82,6 @@ class FormulaSpreadsheet(ExcelApp):
 if __name__ == "__main__":
     spreadsheet = FormulaSpreadsheet()
     spreadsheet.data.set_item("tax", "", label="Tax (22%)")
-    spreadsheet.setup()
+    spreadsheet.build()
     spreadsheet.save("output.xlsx")
     print("Created: output.xlsx")

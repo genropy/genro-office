@@ -20,8 +20,8 @@ Install genro-office with pip:
 The App Pattern
 ---------------
 
-genro-office uses the **App pattern** from genro-print. You create a class that inherits
-from ``WordApp`` or ``ExcelApp`` and override the ``recipe`` method to define your document
+genro-office uses the **App pattern** from genro-builders. You create a class that inherits
+from ``WordApp`` or ``ExcelApp`` and override the ``main`` method to define your document
 structure.
 
 .. code-block:: python
@@ -30,9 +30,9 @@ structure.
 
 
    class MyDocument(WordApp):
-       def recipe(self, root):
+       def main(self, source):
            # Define document structure here
-           doc = root.document(title="My Document")
+           doc = source.document(title="My Document")
            doc.paragraph(content="Hello!")
 
 
@@ -55,11 +55,11 @@ App
 
 The app (``WordApp`` or ``ExcelApp``) provides the high-level interface:
 
-- ``recipe(root)``: Override to define document structure
+- ``main(source)``: Override to define document structure
+- ``build()``: Run the full pipeline (store → main → build → render)
 - ``render()``: Returns document as bytes
 - ``save(filepath)``: Saves document to file
-- ``page``: Access to the underlying Bag structure
-- ``data``: A separate Bag for data binding (future use)
+- ``data``: The shared reactive data store for data binding
 
 Elements
 ~~~~~~~~
@@ -97,8 +97,8 @@ Your First Word Document
 
 
    class HelloWorld(WordApp):
-       def recipe(self, root):
-           doc = root.document(title="Hello World")
+       def main(self, source):
+           doc = source.document(title="Hello World")
 
            doc.heading(content="Welcome", level=1)
            doc.paragraph(content="This is my first document.")
@@ -125,8 +125,8 @@ Your First Excel Spreadsheet
 
 
    class HelloExcel(ExcelApp):
-       def recipe(self, root):
-           wb = root.workbook()
+       def main(self, source):
+           wb = source.workbook()
 
            sheet = wb.sheet(name="Products")
 
@@ -156,3 +156,39 @@ Your First Excel Spreadsheet
    if __name__ == "__main__":
        sheet = HelloExcel()
        sheet.save("hello.xlsx")
+
+Reusable Components
+-------------------
+
+For repeated document structures, use ``@component`` on a custom builder subclass.
+Components are parameterized blocks that expand into elements at build time.
+
+.. code-block:: python
+
+   from genro_builders.builder import component, element
+
+   from genro_office.builders.word_builder import WordBuilder
+
+
+   class LetterBuilder(WordBuilder):
+       # Extend document sub_tags to include the component
+       @element(sub_tags="heading,paragraph,table,image,pagebreak,itemlist,header,footer,run,address_block")
+       def document(self, title="", orientation=None, margin_top=None,
+                    margin_bottom=None, margin_left=None, margin_right=None): ...
+
+       @component(sub_tags="", parent_tags="document")
+       def address_block(self, comp, prefix="sender", **kwargs):
+           comp.paragraph(content=f"^{prefix}?name", bold=True)
+           comp.paragraph(content=f"^{prefix}?street")
+           comp.paragraph(content=f"^{prefix}?city")
+
+The same component is reused with different ``prefix`` values — pointer paths are relocatable:
+
+.. code-block:: python
+
+   doc.address_block(prefix="sender")     # resolves ^sender?name, etc.
+   doc.address_block(prefix="recipient")  # resolves ^recipient?name, etc.
+
+Components also require a thin compiler subclass for transparency (walking into component
+children). See ``examples/word/components/`` and ``examples/excel/components/`` for complete
+working examples.

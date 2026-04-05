@@ -14,8 +14,8 @@ from genro_office import ExcelApp
 class BasicSpreadsheet(ExcelApp):
     """A simple Excel spreadsheet with basic data."""
 
-    def recipe(self, store):
-        wb = store.workbook()
+    def main(self, source):
+        wb = source.workbook()
 
         sheet = wb.sheet(name="^config?sheet_name")
 
@@ -46,6 +46,6 @@ class BasicSpreadsheet(ExcelApp):
 if __name__ == "__main__":
     spreadsheet = BasicSpreadsheet()
     spreadsheet.data.set_item("config", "", sheet_name="Products")
-    spreadsheet.setup()
+    spreadsheet.build()
     spreadsheet.save("output.xlsx")
     print("Created: output.xlsx")

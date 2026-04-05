@@ -12,8 +12,8 @@ Basic Structure
 
 
    class MyDocument(WordApp):
-       def recipe(self, root):
-           doc = root.document(title="Document Title")
+       def main(self, source):
+           doc = source.document(title="Document Title")
            # Add elements here
 
 Document Settings
@@ -23,7 +23,7 @@ The ``document`` element accepts page setup options:
 
 .. code-block:: python
 
-   doc = root.document(
+   doc = source.document(
        title="Report",              # Title (added as H0)
        orientation="landscape",     # portrait (default) or landscape
        margin_top=2.5,              # Top margin in cm
@@ -195,8 +195,8 @@ Complete Example
 
 
    class QuarterlyReport(WordApp):
-       def recipe(self, root):
-           doc = root.document(
+       def main(self, source):
+           doc = source.document(
                title="Q4 2024 Report",
                margin_top=2.5,
                margin_bottom=2.5,

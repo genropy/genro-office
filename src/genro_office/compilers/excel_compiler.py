@@ -34,6 +34,19 @@ class ExcelCompiler(BagCompilerBase):
         super().__init__(builder)
         self._wb: Any | None = None
         self._live_map: dict[int, Any] = {}
+        self._custom_handlers: dict[str, Any] = {}
+
+    def register_handler(self, tag: str, handler: Any) -> None:
+        """Register a custom build handler for a tag.
+
+        The handler receives (node, wb) and is called during workbook
+        building. Custom handlers take precedence over built-in ones.
+
+        Args:
+            tag: The element tag name (e.g., "sparkline").
+            handler: Callable(node, wb) that builds the element.
+        """
+        self._custom_handlers[tag] = handler
 
     # -------------------------------------------------------------------------
     # Main compile entry points (override for bytes output)
@@ -73,31 +86,39 @@ class ExcelCompiler(BagCompilerBase):
             return False
         return self._apply_live_update(node, live_obj)
 
-    def _apply_live_update(self, node: BagNode, live_cell: Any) -> bool:
-        """Apply attribute changes to a live openpyxl cell."""
+    def _apply_live_update(self, node: BagNode, live_obj: Any) -> bool:
+        """Apply attribute changes to a live openpyxl object."""
         tag = node.node_tag or ""
 
         if tag == "cell":
             formula = node.attr.get("formula")
             if formula:
-                live_cell.value = formula
+                live_obj.value = formula
             else:
-                live_cell.value = node.attr.get("content", "")
+                live_obj.value = node.attr.get("content", "")
 
-            self._apply_font(node, live_cell)
-            self._apply_alignment(node, live_cell)
-            self._apply_border(node, live_cell)
+            self._apply_font(node, live_obj)
+            self._apply_alignment(node, live_obj)
+            self._apply_border(node, live_obj)
 
             bg_color = node.attr.get("bg_color")
             if bg_color:
-                live_cell.fill = PatternFill(
+                live_obj.fill = PatternFill(
                     start_color=str(bg_color), end_color=str(bg_color), fill_type="solid"
                 )
 
             number_format = node.attr.get("number_format")
             if number_format:
-                live_cell.number_format = str(number_format)
+                live_obj.number_format = str(number_format)
 
+            return True
+
+        if tag == "row":
+            height = node.attr.get("height")
+            if height is not None:
+                live_obj.height = height
+            hidden = node.attr.get("hidden", False)
+            live_obj.hidden = bool(hidden)
             return True
 
         return False
@@ -127,6 +148,11 @@ class ExcelCompiler(BagCompilerBase):
     def _build_node(self, node: BagNode, wb: Any) -> None:
         """Build a single node into the Workbook."""
         tag = node.node_tag or ""
+
+        build_method = self._custom_handlers.get(tag)
+        if build_method is not None:
+            build_method(node, wb)
+            return
 
         build_method = getattr(self, f"_build_{tag}", None)
         if build_method:
@@ -173,13 +199,16 @@ class ExcelCompiler(BagCompilerBase):
 
     def _build_row(self, node: BagNode, ws: Any, row_idx: int) -> None:
         """Build row node."""
+        row_dim = ws.row_dimensions[row_idx]
+        self._live_map[id(node)] = row_dim
+
         height = node.attr.get("height")
         if height:
-            ws.row_dimensions[row_idx].height = height
+            row_dim.height = height
 
         hidden = node.attr.get("hidden", False)
         if hidden:
-            ws.row_dimensions[row_idx].hidden = True
+            row_dim.hidden = True
 
         if isinstance(node.value, Bag):
             col_idx = 1

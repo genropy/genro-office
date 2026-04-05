@@ -12,8 +12,8 @@ Basic Structure
 
 
    class MySpreadsheet(ExcelApp):
-       def recipe(self, root):
-           wb = root.workbook()
+       def main(self, source):
+           wb = source.workbook()
            sheet = wb.sheet(name="Data")
            # Add rows and cells here
 
@@ -24,7 +24,7 @@ Create worksheets with the ``sheet`` element:
 
 .. code-block:: python
 
-   wb = root.workbook()
+   wb = source.workbook()
 
    # Basic sheet
    sheet1 = wb.sheet(name="Data")
@@ -226,8 +226,8 @@ Complete Example
 
 
    class SalesReport(ExcelApp):
-       def recipe(self, root):
-           wb = root.workbook()
+       def main(self, source):
+           wb = source.workbook()
 
            # Sales data sheet
            sales = wb.sheet(name="Sales", freeze_panes="A2", autofilter="A1:E9")

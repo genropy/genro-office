@@ -20,8 +20,8 @@ from genro_office import WordApp
 class AdvancedDocument(WordApp):
     """An advanced Word document with all features."""
 
-    def recipe(self, store):
-        doc = store.document(
+    def main(self, source):
+        doc = source.document(
             title="^doc?title",
             orientation="portrait",
             margin_top=2.5,
@@ -208,6 +208,6 @@ if __name__ == "__main__":
         accent_color="0000FF",
     )
 
-    document.setup()
+    document.build()
     document.save("output.docx")
     print("Created: output.docx")

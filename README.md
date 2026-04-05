@@ -4,7 +4,7 @@ Reactive office document generation for Genropy — Word and Excel with template
 
 ## Overview
 
-genro-office uses the **genro-builders** architecture: the `recipe()` defines a **document template** with `^pointer` placeholders, and the `data` Bag provides the actual content. Change the data → the document updates.
+genro-office uses the **genro-builders** architecture: the `main()` method defines a **document template** with `^pointer` placeholders, and the `data` Bag provides the actual content. Change the data → the document updates.
 
 ## Installation
 
@@ -30,8 +30,8 @@ from genro_office import WordApp
 
 
 class MyReport(WordApp):
-    def recipe(self, store):
-        doc = store.document(title="^doc?title")
+    def main(self, source):
+        doc = source.document(title="^doc?title")
         doc.heading(content="^doc?section", level=1)
         doc.paragraph(content="^doc?body", bold=True, color="008000")
 
@@ -52,7 +52,7 @@ report.data.set_item(
     section="Introduction",
     body="Revenue increased by 15%.",
 )
-report.setup()
+report.build()
 report.save("report.docx")
 ```
 
@@ -63,8 +63,8 @@ from genro_office import ExcelApp
 
 
 class SalesReport(ExcelApp):
-    def recipe(self, store):
-        wb = store.workbook()
+    def main(self, source):
+        wb = source.workbook()
         sheet = wb.sheet(name="^config?sheet_name", freeze_panes="A2")
 
         header = sheet.row(height=20.0)
@@ -83,20 +83,20 @@ class SalesReport(ExcelApp):
 
 report = SalesReport()
 report.data.set_item("config", "", sheet_name="Sales")
-report.setup()
+report.build()
 report.save("sales.xlsx")
 ```
 
 ## Architecture
 
-genro-office extends [genro-builders](https://github.com/genropy/genro-builders) `BagAppBase`:
+genro-office extends [genro-builders](https://github.com/genropy/genro-builders) `BuilderManager`:
 
 ```text
-WordApp / ExcelApp (BagAppBase)
+WordApp / ExcelApp (BuilderManager)
     │
-    ├── recipe(store)     ← define template with ^pointers
+    ├── main(source)      ← define template with ^pointers
     ├── data              ← bind content, styles, metadata
-    ├── setup()           ← run pipeline: compile → bind → render
+    ├── build()           ← run pipeline: store → main → build → render
     └── save(filepath)    ← write bytes to file
 ```
 
@@ -106,7 +106,7 @@ WordApp / ExcelApp (BagAppBase)
 | -------------------------------- | ------------------------------------------------ |
 | **WordBuilder / ExcelBuilder**   | Define document schema (`@element` declarations) |
 | **WordCompiler / ExcelCompiler** | Transform Bag → bytes (docx/xlsx)                |
-| **WordApp / ExcelApp**           | User-facing app, extends `BagAppBase`            |
+| **WordApp / ExcelApp**           | User-facing app, extends `BuilderManager`        |
 
 ### Data Binding with `^pointer`
 
@@ -132,8 +132,8 @@ Group related data as attributes of a single node:
 
 ```python
 class Invoice(WordApp):
-    def recipe(self, store):
-        doc = store.document()
+    def main(self, source):
+        doc = source.document()
         doc.heading(
             content="^invoice?title",
             font_name="^styles?heading_font",
@@ -152,7 +152,7 @@ app.data.set_item(
     heading_font="Arial",
     heading_color="1F4E79",
 )
-app.setup()
+app.build()
 app.save("invoice.docx")
 ```
 
@@ -160,7 +160,43 @@ The `set_item(path, value, **kwargs)` method creates a node at `path` with `valu
 
 ### Live Update
 
-When data changes after `setup()`, the compiler tries a **live update** on the Document/Workbook object. If the changed attribute supports it (font, color, content, bold, etc.), only that element is updated. Otherwise, the full document is re-rendered.
+When data changes after `build()`, the compiler tries a **live update** on the Document/Workbook object. If the changed attribute supports it (font, color, content, bold, etc.), only that element is updated. Otherwise, the full document is re-rendered.
+
+### Reusable Components (`@component`)
+
+Define reusable document blocks with `@component` on a custom builder subclass.
+Components are parameterized structures that expand into elements at build time.
+
+```python
+from genro_builders.builder import component, element
+
+class LetterBuilder(WordBuilder):
+    @element(sub_tags="heading,paragraph,table,image,pagebreak,itemlist,header,footer,run,address_block")
+    def document(self, title="", orientation=None, margin_top=None,
+                 margin_bottom=None, margin_left=None, margin_right=None): ...
+
+    @component(sub_tags="", parent_tags="document")
+    def address_block(self, comp, prefix="sender", **kwargs):
+        comp.paragraph(content=f"^{prefix}?name", bold=True)
+        comp.paragraph(content=f"^{prefix}?street")
+        comp.paragraph(content=f"^{prefix}?city")
+        comp.paragraph(content=f"^{prefix}?country")
+```
+
+The same component is reused with different data prefixes — the pointer paths are relocatable:
+
+```python
+class BusinessLetter(WordApp):
+    def __init__(self):
+        self.builder = self.set_builder("main", LetterBuilder)
+
+    def main(self, source):
+        doc = source.document()
+        doc.address_block(prefix="sender")     # ^sender?name, ^sender?street, ...
+        doc.address_block(prefix="recipient")  # ^recipient?name, ^recipient?street, ...
+```
+
+See `examples/word/components/` and `examples/excel/components/` for complete examples.
 
 ## Features
 
@@ -175,6 +211,7 @@ When data changes after `setup()`, the compiler tries a **live update** on the D
 - **Images**: with width/height control
 - **Headers and footers**
 - **Page breaks**
+- **Reusable components**: `@component` for parameterized document blocks
 - **`^pointer` data binding** on all attributes
 
 ### ExcelApp / ExcelBuilder
@@ -187,6 +224,7 @@ When data changes after `setup()`, the compiler tries a **live update** on the D
 - **Autofilter**
 - **Charts**: bar, line, pie
 - **Formulas**: including cross-sheet references
+- **Reusable components**: `@component` for parameterized sheet blocks
 - **`^pointer` data binding** on all attributes
 
 ## API Reference
@@ -195,8 +233,8 @@ When data changes after `setup()`, the compiler tries a **live update** on the D
 
 ```python
 class MyDocument(WordApp):
-    def recipe(self, store):
-        doc = store.document(
+    def main(self, source):
+        doc = source.document(
             title="^doc?title",
             orientation="portrait",  # or "landscape"
             margin_top=2.5,          # cm
@@ -270,7 +308,7 @@ app.data.set_item(
 )
 app.data.set_item("content", "", body="Hello World")
 app.data.set_item("styles", "", body_font="Georgia")
-app.setup()
+app.build()
 app.save("output.docx")
 ```
 
@@ -278,8 +316,8 @@ app.save("output.docx")
 
 ```python
 class MySpreadsheet(ExcelApp):
-    def recipe(self, store):
-        wb = store.workbook()
+    def main(self, source):
+        wb = source.workbook()
 
         sheet = wb.sheet(
             name="^config?sheet_name",
@@ -322,7 +360,7 @@ class MySpreadsheet(ExcelApp):
 app = MySpreadsheet()
 app.data.set_item("config", "", sheet_name="Data", chart_title="Sales Chart")
 app.data.set_item("data", "", value=42)
-app.setup()
+app.build()
 app.save("output.xlsx")
 ```
 
@@ -333,15 +371,17 @@ See the `examples/` directory for complete examples:
 ```text
 examples/
 ├── excel/
-│   ├── advanced/   # All features: charts, merge, freeze panes, ^pointer
-│   ├── basic/      # Simple data entry with ^pointer
-│   ├── formulas/   # Excel formulas
-│   └── styled/     # Formatting with ^pointer
+│   ├── advanced/     # All features: charts, merge, freeze panes, ^pointer
+│   ├── basic/        # Simple data entry with ^pointer
+│   ├── components/   # @component: annual report with monthly blocks
+│   ├── formulas/     # Excel formulas
+│   └── styled/       # Formatting with ^pointer
 └── word/
-    ├── advanced/   # All features with ^pointer styles
-    ├── basic/      # Headings, paragraphs, tables with ^pointer
-    ├── letter/     # Business letter template with ^pointer
-    └── report/     # Quarterly report template with ^pointer
+    ├── advanced/     # All features with ^pointer styles
+    ├── basic/        # Headings, paragraphs, tables with ^pointer
+    ├── components/   # @component: business letter with reusable blocks
+    ├── letter/       # Business letter template with ^pointer
+    └── report/       # Quarterly report template with ^pointer
 ```
 
 Run any example:

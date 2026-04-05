@@ -15,8 +15,8 @@ from genro_office import WordApp
 class LetterDocument(WordApp):
     """A formal business letter template."""
 
-    def recipe(self, store):
-        doc = store.document()
+    def main(self, source):
+        doc = source.document()
 
         # Sender info (attributes of 'sender' node)
         doc.paragraph(content="^sender?company")
@@ -98,6 +98,6 @@ if __name__ == "__main__":
         ),
     )
 
-    letter.setup()
+    letter.build()
     letter.save("output.docx")
     print("Created: output.docx")

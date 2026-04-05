@@ -14,7 +14,7 @@ from genro_office import ExcelApp
 class SimpleExcelDoc(ExcelApp):
     """Simple Excel spreadsheet for testing."""
 
-    def recipe(self, source):
+    def main(self, source):
         wb = source.workbook()
         sheet = wb.sheet(name="Data")
 
@@ -30,7 +30,7 @@ class SimpleExcelDoc(ExcelApp):
 class ExcelDocWithFormula(ExcelApp):
     """Excel spreadsheet with formula for testing."""
 
-    def recipe(self, source):
+    def main(self, source):
         wb = source.workbook()
         sheet = wb.sheet(name="Calculations")
 
@@ -50,7 +50,7 @@ class ExcelDocWithFormula(ExcelApp):
 class ExcelDocWithStyling(ExcelApp):
     """Excel spreadsheet with styling for testing."""
 
-    def recipe(self, source):
+    def main(self, source):
         wb = source.workbook()
         sheet = wb.sheet(name="Styled")
 
@@ -124,11 +124,26 @@ class TestExcelApp:
         app = SimpleExcelDoc()
         assert app.data is app.builder.data
 
+    def test_live_update_row(self):
+        """Test live update handles row tag."""
+        app = ExcelDocWithStyling()
+        app.build()
+        compiler = app._excel_compiler
+        # Row dimensions are now in _live_map
+        assert len(compiler._live_map) > 0
+
+    def test_register_handler(self):
+        """Test custom handler registration and dispatch."""
+        app = ExcelApp()
+        compiler = app._excel_compiler
+        compiler.register_handler("sparkline", lambda _node, _wb: None)
+        assert "sparkline" in compiler._custom_handlers
+
     def test_data_binding(self):
-        """Test ^pointer data binding in recipe."""
+        """Test ^pointer data binding in main."""
 
         class BoundSheet(ExcelApp):
-            def recipe(self, source):
+            def main(self, source):
                 wb = source.workbook()
                 sheet = wb.sheet(name="Bound")
                 row = sheet.row()

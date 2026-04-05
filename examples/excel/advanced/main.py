@@ -18,8 +18,8 @@ from genro_office import ExcelApp
 class AdvancedSpreadsheet(ExcelApp):
     """An advanced Excel spreadsheet with all features."""
 
-    def recipe(self, store):
-        wb = store.workbook()
+    def main(self, source):
+        wb = source.workbook()
 
         self._create_sales_sheet(wb)
         self._create_charts_sheet(wb)
@@ -260,6 +260,6 @@ if __name__ == "__main__":
         header_fg="FFFFFF",
     )
 
-    spreadsheet.setup()
+    spreadsheet.build()
     spreadsheet.save("output.xlsx")
     print("Created: output.xlsx")

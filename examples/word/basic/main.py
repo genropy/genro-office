@@ -5,7 +5,7 @@
 """Basic Word document example.
 
 Demonstrates simple document creation with headings, paragraphs, and a table.
-Uses both ^path (value) and ^path?attr (attribute) data binding.
+Uses ^path?attr data binding with set_item() for grouped attributes.
 """
 
 from genro_office import WordApp
@@ -14,8 +14,8 @@ from genro_office import WordApp
 class BasicDocument(WordApp):
     """A simple Word document with headings, paragraphs, and a table."""
 
-    def recipe(self, store):
-        doc = store.document(title="^doc?title")
+    def main(self, source):
+        doc = source.document(title="^doc?title")
 
         doc.heading(content="^doc?section_intro", level=1)
         doc.paragraph(content="^content?intro")
@@ -58,6 +58,6 @@ if __name__ == "__main__":
         features_intro="It demonstrates the basic features of the WordBuilder.",
     )
 
-    document.setup()
+    document.build()
     document.save("output.docx")
     print("Created: output.docx")
